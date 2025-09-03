@@ -1,0 +1,71 @@
+@import "tailwindcss";
+@import "../lib/theme/tokens.css";
+
+:root {
+  --background: #ffffff;
+  --foreground: #171717;
+}
+
+@theme inline {
+  --color-background: var(--background);
+  --color-foreground: var(--foreground);
+  --font-sans: var(--font-geist-sans);
+  --font-mono: var(--font-geist-mono);
+  
+  /* SaaS Expand Brand Colors */
+  --color-brand: rgb(var(--brand-fg));
+  --color-brand-bg: rgb(var(--brand-bg));
+  --color-brand-muted: rgb(var(--brand-muted));
+  --color-brand-border: rgb(var(--brand-border));
+  --color-brand-card: rgb(var(--brand-card));
+  --color-accent: rgb(var(--accent));
+  --color-accent-hover: rgb(var(--accent-hover));
+  --color-accent-muted: rgb(var(--accent-muted));
+  
+  /* Semantic colors */
+  --color-success: rgb(var(--success));
+  --color-warning: rgb(var(--warning));
+  --color-danger: rgb(var(--danger));
+  --color-info: rgb(var(--info));
+}
+
+@media (prefers-color-scheme: dark) {
+  :root {
+    --background: #0a0a0a;
+    --foreground: #ededed;
+  }
+}
+
+body {
+  background: var(--background);
+  color: var(--foreground);
+  font-family: var(--font-sans), system-ui, sans-serif;
+  font-feature-settings: "rlig" 1, "calt" 1;
+}
+
+/* SaaS Expand Global Styles */
+.saas-expand-app {
+  background: rgb(var(--brand-bg));
+  color: rgb(var(--brand-fg));
+  min-height: 100vh;
+}
+
+/* Typography */
+h1, h2, h3, h4, h5, h6 {
+  font-weight: 600;
+  letter-spacing: -0.025em;
+  line-height: 1.25;
+}
+
+.caps {
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  font-weight: 600;
+}
+
+/* Transitions */
+* {
+  transition-duration: var(--transition-fast);
+  transition-timing-function: ease-out;
+  transition-property: color, background-color, border-color, opacity, box-shadow, transform;
+}

@@ -1,0 +1,174 @@
+// This is your Prisma schema file,
+// learn more about it in the docs: https://pris.ly/d/prisma-schema
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "sqlite"
+  url      = env("DATABASE_URL")
+}
+
+model Client {
+  id         String     @id @default(cuid())
+  name       String
+  code3      String     // identifiant 3 lettres (A-Z, 0-9), ex: "QF1"
+  apiKeyEnc  String     // clé Emelia chiffrée
+  createdAt  DateTime   @default(now())
+  lastSyncAt DateTime?
+  
+  // Nouveaux champs pour Make
+  valueProposition String?  // Proposition de valeur et cible
+  slackId         String?   // Slack ID
+  actionLinks     Json?     // Liens d'action avec descriptions
+  responseStyle   String?   // Style de réponse
+  makeWebhookUrl  String?   // URL du webhook Make
+  
+  campaigns  Campaign[]
+  threads    Thread[]
+  kpis       ClientKpis?
+  shareLinks ShareLink[]
+  webhooks   Webhook[]
+  crmContacts CRMContact[]
+}
+
+model Campaign {
+  id          String   @id @default(cuid())
+  clientId    String
+  client      Client   @relation(fields: [clientId], references: [id], onDelete: Cascade)
+  emeliaId    String   // id Emelia
+  name        String
+  createdAt   DateTime @default(now())
+  lastEventAt DateTime?
+  threads     Thread[]
+
+  @@unique([clientId, emeliaId])
+}
+
+model Thread {
+  id            String    @id @default(cuid())
+  clientId      String
+  client        Client    @relation(fields: [clientId], references: [id], onDelete: Cascade)
+  campaignId    String
+  campaign      Campaign  @relation(fields: [campaignId], references: [id], onDelete: Cascade)
+  prospectEmail String
+  subject       String?
+  firstAt       DateTime?
+  lastAt        DateTime?
+  label         String?   // INTERESSE | A_RAPPELER | NEUTRE | PAS_INTERESSE | INJOIGNABLE | OPT_OUT
+  confidence    Float?
+  messages      Message[]
+  crmContact    CRMContact?
+}
+
+model Message {
+  id        String   @id @default(cuid())
+  threadId  String
+  thread    Thread   @relation(fields: [threadId], references: [id], onDelete: Cascade)
+  direction String   // INBOUND | OUTBOUND
+  at        DateTime
+  fromAddr  String?
+  toAddr    String?
+  text      String
+  messageId String?  // Emelia message ID for tracking
+  raw       Json?
+}
+
+model ClientKpis {
+  id         String   @id @default(cuid())
+  clientId   String   @unique
+  client     Client   @relation(fields: [clientId], references: [id], onDelete: Cascade)
+  sent       Int      @default(0)
+  delivered  Int      @default(0)
+  opens      Int      @default(0)
+  clicks     Int      @default(0)
+  replies    Int      @default(0)
+  bounces    Int      @default(0)
+  unsubs     Int      @default(0)
+  interested Int      @default(0)
+  computedAt DateTime @default(now())
+}
+
+model ShareLink {
+  id        String    @id @default(cuid())
+  clientId  String
+  client    Client    @relation(fields: [clientId], references: [id], onDelete: Cascade)
+  token     String    @unique // JWT signé (scope viewer+clientId)
+  createdAt DateTime  @default(now())
+  expiresAt DateTime?
+}
+
+model Webhook {
+  id            String         @id @default(cuid())
+  clientId      String
+  client        Client         @relation(fields: [clientId], references: [id], onDelete: Cascade)
+  emeliaId      String?        // ID du webhook côté Emelia
+  url           String         // URL du webhook (notre endpoint)
+  campaignType  String         // "email" | "advanced" | "linkedin"
+  events        String         // JSON array des events à écouter ["REPLIED", "SENT", "OPENED"]
+  isActive      Boolean        @default(true)
+  secret        String         // Secret pour sécuriser le webhook
+  createdAt     DateTime       @default(now())
+  updatedAt     DateTime       @updatedAt
+  lastTriggered DateTime?      // Dernière fois que le webhook a été déclenché
+  deliveries    WebhookDelivery[]
+  
+  @@unique([clientId, campaignType]) // Un seul webhook par type de campagne par client
+}
+
+model WebhookDelivery {
+  id          String    @id @default(cuid())
+  webhookId   String
+  webhook     Webhook   @relation(fields: [webhookId], references: [id], onDelete: Cascade)
+  event       String    // "REPLIED", "SENT", etc.
+  payload     Json      // Payload reçu d'Emelia
+  processed   Boolean   @default(false)
+  error       String?   // Erreur si traitement échoué
+  receivedAt  DateTime  @default(now())
+  processedAt DateTime?
+}
+
+model CRMContact {
+  id            String    @id @default(cuid())
+  clientId      String
+  client        Client    @relation(fields: [clientId], references: [id], onDelete: Cascade)
+  threadId      String    @unique
+  thread        Thread    @relation(fields: [threadId], references: [id], onDelete: Cascade)
+  status        String    // "INTERESSE" | "APPEL_RESERVE" | "RDV_FIXE" | "QUALIFIE" | "PERDU"
+  priority      String    @default("NORMALE") // "HAUTE" | "NORMALE" | "BASSE"
+  score         Float?    // Score d'intérêt (0-1)
+  notes         String?   // Notes du commercial
+  nextAction    String?   // Prochaine action à effectuer
+  nextActionAt  DateTime? // Date de la prochaine action
+  assignedTo    String?   // Assigné à (pour les équipes)
+  createdAt     DateTime  @default(now())
+  updatedAt     DateTime  @updatedAt
+  
+  // Métriques
+  responseTimes CRMResponseTime[]
+  activities    CRMActivity[]
+  
+  @@index([clientId, status])
+  @@index([clientId, nextActionAt])
+}
+
+model CRMActivity {
+  id        String     @id @default(cuid())
+  contactId String
+  contact   CRMContact @relation(fields: [contactId], references: [id], onDelete: Cascade)
+  type      String     // "STATUS_CHANGE" | "NOTE_ADDED" | "EMAIL_SENT" | "CALL_MADE" | "MEETING_SCHEDULED"
+  details   String     // Description de l'activité
+  metadata  Json?      // Données supplémentaires
+  createdAt DateTime   @default(now())
+}
+
+model CRMResponseTime {
+  id        String     @id @default(cuid())
+  contactId String
+  contact   CRMContact @relation(fields: [contactId], references: [id], onDelete: Cascade)
+  sentAt    DateTime   // Quand l'email a été envoyé
+  repliedAt DateTime   // Quand le prospect a répondu
+  duration  Int        // Durée en heures
+  step      Int        // Étape de la campagne
+}

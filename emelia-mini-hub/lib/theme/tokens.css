@@ -1,0 +1,110 @@
+/* SaaS Expand Design Tokens */
+:root {
+  /* Brand Colors - Monochrome base */
+  --brand-bg: 255 255 255;
+  --brand-fg: 15 15 15;
+  --brand-muted: 107 114 128;
+  --brand-border: 229 231 235;
+  --brand-card: 255 255 255;
+  
+  /* Accent - centralized for brand consistency */
+  --accent: 37 99 235;
+  --accent-hover: 29 78 216;
+  --accent-muted: 219 234 254;
+  
+  /* Semantic Colors */
+  --success: 34 197 94;
+  --warning: 245 158 11;
+  --danger: 239 68 68;
+  --info: 59 130 246;
+  
+  /* Gray Scale */
+  --gray-50: 249 250 251;
+  --gray-100: 243 244 246;
+  --gray-200: 229 231 235;
+  --gray-300: 209 213 219;
+  --gray-400: 156 163 175;
+  --gray-500: 107 114 128;
+  --gray-600: 75 85 99;
+  --gray-700: 55 65 81;
+  --gray-800: 31 41 55;
+  --gray-900: 17 24 39;
+  
+  /* Typography Scale */
+  --font-size-xs: 0.75rem;
+  --font-size-sm: 0.875rem;
+  --font-size-base: 1rem;
+  --font-size-lg: 1.125rem;
+  --font-size-xl: 1.25rem;
+  --font-size-2xl: 1.5rem;
+  --font-size-3xl: 1.875rem;
+  --font-size-4xl: 2.25rem;
+  
+  /* Spacing Scale */
+  --spacing-xs: 0.25rem;
+  --spacing-sm: 0.5rem;
+  --spacing-md: 1rem;
+  --spacing-lg: 1.5rem;
+  --spacing-xl: 2rem;
+  --spacing-2xl: 3rem;
+  --spacing-3xl: 4rem;
+  
+  /* Border Radius */
+  --radius-sm: 0.375rem;
+  --radius-md: 0.5rem;
+  --radius-lg: 0.75rem;
+  --radius-xl: 1rem;
+  --radius-2xl: 1.5rem;
+  
+  /* Shadows */
+  --shadow-sm: 0 1px 2px 0 rgb(0 0 0 / 0.05);
+  --shadow-md: 0 4px 6px -1px rgb(0 0 0 / 0.1), 0 2px 4px -2px rgb(0 0 0 / 0.1);
+  --shadow-lg: 0 10px 15px -3px rgb(0 0 0 / 0.1), 0 4px 6px -4px rgb(0 0 0 / 0.1);
+  
+  /* Animation */
+  --transition-fast: 150ms ease-out;
+  --transition-medium: 250ms ease-out;
+  --transition-slow: 350ms ease-out;
+}
+
+/* Dark mode variables (optional) */
+@media (prefers-color-scheme: dark) {
+  :root {
+    --brand-bg: 9 9 11;
+    --brand-fg: 250 250 250;
+    --brand-muted: 161 161 170;
+    --brand-border: 39 39 42;
+    --brand-card: 24 24 27;
+  }
+}
+
+/* Typography Classes - SaaS Expand editorial style */
+.typography-caps {
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  font-weight: 600;
+}
+
+.typography-editorial {
+  font-weight: 400;
+  line-height: 1.6;
+}
+
+.typography-micro {
+  font-size: var(--font-size-xs);
+  font-weight: 500;
+  color: rgb(var(--brand-muted));
+}
+
+/* Editorial prefixes */
+.editorial-prefix::before {
+  content: "// ";
+  color: rgb(var(--brand-muted));
+  font-weight: 300;
+}
+
+.editorial-number::before {
+  color: rgb(var(--brand-muted));
+  font-weight: 300;
+  margin-right: 0.5em;
+}
