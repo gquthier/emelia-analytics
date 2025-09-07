@@ -1,0 +1,272 @@
+{
+  "message": "Exemple de réponse API Emelia - Campaign Activities",
+  "endpoint": "GET https://api.emelia.io/campaigns/{campaignId}/activities",
+  "description": "Structure exacte des données retournées par l'API Emelia pour les activités de campagne",
+  
+  "response": {
+    "activities": [
+      {
+        "_id": "64a8b2c1d4e5f6789abcdef0",
+        "contact": {
+          "_id": "64a8b2c1d4e5f6789abcdef1",
+          "firstName": "Marie",
+          "lastName": "Dupont",
+          "email": "marie.dupont@example.com",
+          "custom": {
+            "organizationname": "TechCorp SARL",
+            "title": "Directrice Marketing"
+          },
+          "status": "ACTIVE",
+          "lastOpen": "2024-01-15T14:30:00.000Z",
+          "lastReplied": "2024-01-16T09:15:00.000Z"
+        },
+        "event": "SENT",
+        "date": "2024-01-15T10:00:00.000Z",
+        "step": 1,
+        "version": 1
+      },
+      
+      {
+        "_id": "64a8b2c1d4e5f6789abcdef2",
+        "contact": {
+          "_id": "64a8b2c1d4e5f6789abcdef1",
+          "firstName": "Marie",
+          "lastName": "Dupont",
+          "email": "marie.dupont@example.com",
+          "custom": {
+            "organizationname": "TechCorp SARL",
+            "title": "Directrice Marketing"
+          },
+          "status": "ACTIVE",
+          "lastOpen": "2024-01-15T14:30:00.000Z"
+        },
+        "event": "FIRST_OPEN",
+        "date": "2024-01-15T14:30:00.000Z",
+        "step": 1,
+        "version": 1
+      },
+      
+      {
+        "_id": "64a8b2c1d4e5f6789abcdef3",
+        "contact": {
+          "_id": "64a8b2c1d4e5f6789abcdef1",
+          "firstName": "Marie",
+          "lastName": "Dupont",
+          "email": "marie.dupont@example.com",
+          "custom": {
+            "organizationname": "TechCorp SARL",
+            "title": "Directrice Marketing"
+          },
+          "status": "ACTIVE",
+          "lastReplied": "2024-01-16T09:15:00.000Z"
+        },
+        "event": "REPLIED",
+        "date": "2024-01-16T09:15:00.000Z",
+        "step": 1,
+        "version": 1,
+        "reply": "Bonjour,\n\nMerci pour votre message. Votre solution m'intéresse beaucoup ! Pourrions-nous programmer un appel pour en discuter plus en détail ?\n\nCordialement,\nMarie Dupont",
+        "sentiment": {
+          "classification": "INTERESTED",
+          "score": 0.89,
+          "message": "Le prospect montre un intérêt clair et demande un rendez-vous"
+        }
+      },
+      
+      {
+        "_id": "64a8b2c1d4e5f6789abcdef4",
+        "contact": {
+          "_id": "64a8b2c1d4e5f6789abcdef5",
+          "firstName": "Pierre",
+          "lastName": "Martin",
+          "email": "pierre.martin@entreprise.fr",
+          "custom": {
+            "organizationname": "Innovation Ltd",
+            "title": "CEO"
+          },
+          "status": "ACTIVE"
+        },
+        "event": "REPLIED",
+        "date": "2024-01-16T11:45:00.000Z",
+        "step": 1,
+        "version": 1,
+        "reply": "Bonjour,\n\nMerci pour votre proposition, mais nous ne sommes pas intéressés pour le moment.\n\nBonne journée",
+        "sentiment": {
+          "classification": "NOT_INTERESTED",
+          "score": 0.92,
+          "message": "Refus poli mais clair"
+        }
+      },
+      
+      {
+        "_id": "64a8b2c1d4e5f6789abcdef6",
+        "contact": {
+          "_id": "64a8b2c1d4e5f6789abcdef7",
+          "firstName": "Sophie",
+          "lastName": "Bernard",
+          "email": "sophie.bernard@startup.io",
+          "custom": {
+            "organizationname": "GrowthLab",
+            "title": "Head of Sales"
+          },
+          "status": "ACTIVE"
+        },
+        "event": "REPLIED",
+        "date": "2024-01-16T15:20:00.000Z",
+        "step": 1,
+        "version": 1,
+        "reply": "Salut !\n\nC'est intéressant ! Peux-tu m'envoyer plus d'informations ? J'aimerais voir comment ça pourrait s'intégrer dans notre stack actuel.\n\nMerci !",
+        "sentiment": {
+          "classification": "INTERESTED,QUESTION_ASK",
+          "score": 0.78,
+          "message": "Intérêt confirmé avec demande d'informations complémentaires"
+        }
+      },
+      
+      {
+        "_id": "64a8b2c1d4e5f6789abcdef8",
+        "contact": {
+          "_id": "64a8b2c1d4e5f6789abcdef9",
+          "firstName": "Thomas",
+          "lastName": "Lefebvre",
+          "email": "thomas.lefebvre@company.com",
+          "status": "ACTIVE"
+        },
+        "event": "REPLIED",
+        "date": "2024-01-17T08:30:00.000Z",
+        "step": 1,
+        "version": 1,
+        "reply": "Bonjour,\n\nJe suis actuellement absent du bureau jusqu'au 25 janvier. Je reviendrai vers vous dès mon retour.\n\nCordialement",
+        "sentiment": {
+          "classification": "OUT_OF_OFFICE",
+          "score": 0.95,
+          "message": "Message d'absence automatique"
+        }
+      },
+      
+      {
+        "_id": "64a8b2c1d4e5f6789abcdefa",
+        "contact": {
+          "_id": "64a8b2c1d4e5f6789abcdefb",
+          "firstName": "Julie",
+          "lastName": "Moreau",
+          "email": "julie.moreau@business.fr",
+          "custom": {
+            "organizationname": "Digital Solutions",
+            "title": "CMO"
+          },
+          "status": "ACTIVE"
+        },
+        "event": "REPLIED",
+        "date": "2024-01-17T14:15:00.000Z",
+        "step": 1,
+        "version": 1,
+        "reply": "Bonjour,\n\nNous sommes occupés en ce moment, pouvez-vous me rappeler dans 2 semaines ?\n\nMerci",
+        "sentiment": {
+          "classification": "DELEGATION",
+          "score": 0.71,
+          "message": "Demande de rappel ultérieur - intérêt potentiel différé"
+        }
+      },
+      
+      {
+        "_id": "64a8b2c1d4e5f6789abcdefc",
+        "contact": {
+          "_id": "64a8b2c1d4e5f6789abcdefd",
+          "firstName": "David",
+          "lastName": "Rousseau",
+          "email": "david.rousseau@oldschool.com",
+          "status": "ACTIVE"
+        },
+        "event": "REPLIED",
+        "date": "2024-01-17T16:45:00.000Z",
+        "step": 1,
+        "version": 1,
+        "reply": "STOP emailing me! Remove me from your list immediately. This is spam!",
+        "sentiment": {
+          "classification": "HOSTILE",
+          "score": 0.87,
+          "message": "Réaction hostile avec demande de désabonnement"
+        }
+      },
+      
+      {
+        "_id": "64a8b2c1d4e5f6789abcdefe",
+        "contact": {
+          "_id": "64a8b2c1d4e5f6789abcdeff",
+          "firstName": "Alice",
+          "lastName": "Petit",
+          "email": "alice.petit@neutral.org",
+          "status": "ACTIVE"
+        },
+        "event": "REPLIED",
+        "date": "2024-01-18T10:20:00.000Z",
+        "step": 1,
+        "version": 1,
+        "reply": "Merci pour l'information. J'ai bien reçu votre message.",
+        "sentiment": {
+          "classification": "NEUTRAL",
+          "score": 0.45,
+          "message": "Réponse neutre sans indication d'intérêt ou de refus"
+        }
+      },
+      
+      {
+        "_id": "64a8b2c1d4e5f6789abcdef10",
+        "contact": {
+          "_id": "64a8b2c1d4e5f6789abcdef11",
+          "firstName": "Michel",
+          "lastName": "Durand",
+          "email": "michel.durand@confused.fr",
+          "status": "ACTIVE"
+        },
+        "event": "REPLIED",
+        "date": "2024-01-18T13:30:00.000Z",
+        "step": 1,
+        "version": 1,
+        "reply": "Je ne comprends pas de quoi vous parlez. Qui êtes-vous ?",
+        "sentiment": {
+          "classification": "INCOMPREHENSION",
+          "score": 0.82,
+          "message": "Le prospect ne comprend pas le contexte du message"
+        }
+      }
+    ],
+    "nextCursor": "eyJsYXN0SWQiOiI2NGE4YjJjMWQ0ZTVmNjc4OWFiY2RlZjEwIiwibGFzdERhdGUiOiIyMDI0LTAxLTE4VDEzOjMwOjAwLjAwMFoifQ=="
+  },
+  
+  "notes": {
+    "event_types": [
+      "SENT - Email envoyé",
+      "DELIVERED - Email délivré",
+      "FIRST_OPEN - Première ouverture",
+      "OPENED - Ouverture",
+      "CLICKED - Clic sur un lien",
+      "REPLIED - Réponse reçue",
+      "RE_REPLY - Réponse à une réponse",
+      "BOUNCED - Email en erreur",
+      "UNSUBSCRIBED - Désabonnement"
+    ],
+    
+    "sentiment_classifications": [
+      "INTERESTED - Prospect intéressé",
+      "NOT_INTERESTED - Prospect pas intéressé", 
+      "OUT_OF_OFFICE - Absence/Indisponible",
+      "DELEGATION - Demande de rappel/report",
+      "QUESTION_ASK - Pose des questions",
+      "HOSTILE - Réaction négative/agressive",
+      "NEUTRAL - Réponse neutre",
+      "INCOMPREHENSION - Ne comprend pas"
+    ],
+    
+    "mapping_vers_base_de_donnees": {
+      "INTERESTED": "INTERESSE",
+      "NOT_INTERESTED": "PAS_INTERESSE", 
+      "OUT_OF_OFFICE": "INJOIGNABLE",
+      "DELEGATION": "A_RAPPELER",
+      "QUESTION_ASK": "INTERESSE",
+      "HOSTILE": "PAS_INTERESSE",
+      "NEUTRAL": "NEUTRE",
+      "INCOMPREHENSION": "NEUTRE"
+    }
+  }
+}

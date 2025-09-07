@@ -15,11 +15,19 @@ interface Response {
   prospectCompany?: string
   subject?: string
   content: string
+  rawContent?: string
   receivedAt: Date
   campaignName: string
   label?: string
   confidence?: number
   isRead?: boolean
+  emelia?: {
+    sender?: string | null
+    messageId?: string | null
+    originalDate?: string | null
+    status: 'REPLIED'
+    source: 'EMELIA_WEBHOOK'
+  }
 }
 
 interface ResponsesInboxProps {
@@ -269,13 +277,23 @@ export function ResponsesInbox({ clientId }: ResponsesInboxProps) {
                 )}
                 
                 {/* Aperçu du contenu */}
-                <div className="text-xs text-gray-500 line-clamp-2 leading-relaxed">
+                <div className="text-xs text-gray-600 line-clamp-2 leading-relaxed mb-2 bg-gray-50 p-2 rounded">
                   {response.content.substring(0, 150)}...
                 </div>
                 
-                {/* Campagne */}
-                <div className="text-xs text-gray-400 mt-1 truncate">
-                  📧 {response.campaignName}
+                {/* Footer avec campagne et statut Emelia */}
+                <div className="flex items-center justify-between text-xs text-gray-400 mt-1">
+                  <div className="flex items-center gap-2">
+                    <span>📧 {response.campaignName}</span>
+                    {response.emelia?.status && (
+                      <span className="inline-flex items-center px-2 py-0.5 rounded-full bg-green-100 text-green-800 font-medium">
+                        ✅ {response.emelia.status}
+                      </span>
+                    )}
+                  </div>
+                  {response.emelia?.source && (
+                    <span className="text-blue-600 font-medium">📡 EMELIA</span>
+                  )}
                 </div>
               </div>
             ))
@@ -353,22 +371,60 @@ export function ResponsesInbox({ clientId }: ResponsesInboxProps) {
             <div className="flex-1 p-6 overflow-y-auto">
               <div className="max-w-4xl">
                 <div className="prose prose-sm max-w-none">
-                  <div className="bg-white border border-gray-200 rounded-lg p-6 text-gray-900 leading-relaxed whitespace-pre-wrap">
+                  <div className="bg-white border border-gray-200 rounded-lg p-6 text-gray-900 leading-relaxed whitespace-pre-wrap shadow-sm">
                     {selectedResponse.content}
                   </div>
                 </div>
                 
                 {/* Métadonnées */}
                 <div className="mt-6 space-y-3">
-                  <div className="text-sm text-gray-500 bg-gray-50 p-3 rounded-lg">
-                    <div className="font-medium mb-1">Informations sur la campagne</div>
-                    <div>📧 {selectedResponse.campaignName}</div>
+                  <div className="text-sm text-gray-500 bg-gray-50 p-4 rounded-lg">
+                    <div className="font-medium mb-2">📧 Informations sur la campagne</div>
+                    <div className="space-y-1">
+                      <div><strong>Campagne:</strong> {selectedResponse.campaignName}</div>
+                      <div><strong>Email prospect:</strong> {selectedResponse.prospectEmail}</div>
+                      {selectedResponse.prospectCompany && (
+                        <div><strong>Entreprise:</strong> {selectedResponse.prospectCompany}</div>
+                      )}
+                    </div>
                   </div>
                   
+                  {selectedResponse.emelia && (
+                    <div className="text-sm text-blue-800 bg-blue-50 p-4 rounded-lg border border-blue-200">
+                      <div className="font-medium mb-2 flex items-center gap-2">
+                        📡 <span>Statut Emelia</span>
+                        <span className="inline-flex items-center px-2 py-1 rounded-full bg-green-100 text-green-800 text-xs font-medium">
+                          ✅ {selectedResponse.emelia.status}
+                        </span>
+                      </div>
+                      <div className="space-y-1 text-xs">
+                        {selectedResponse.emelia.sender && (
+                          <div><strong>Expéditeur original:</strong> {selectedResponse.emelia.sender}</div>
+                        )}
+                        {selectedResponse.emelia.originalDate && (
+                          <div><strong>Date originale:</strong> {selectedResponse.emelia.originalDate}</div>
+                        )}
+                        {selectedResponse.emelia.messageId && (
+                          <div><strong>Message ID:</strong> <code className="bg-gray-100 px-1 rounded text-xs">{selectedResponse.emelia.messageId}</code></div>
+                        )}
+                        <div><strong>Source:</strong> {selectedResponse.emelia.source}</div>
+                      </div>
+                    </div>
+                  )}
+                  
                   {selectedResponse.confidence && (
-                    <div className="text-sm text-blue-800 bg-blue-50 p-3 rounded-lg">
-                      <div className="font-medium mb-1">Classification automatique</div>
-                      <div>🤖 Confiance: {(selectedResponse.confidence * 100).toFixed(1)}%</div>
+                    <div className="text-sm text-purple-800 bg-purple-50 p-4 rounded-lg border border-purple-200">
+                      <div className="font-medium mb-1 flex items-center gap-2">
+                        🤖 <span>Classification automatique IA</span>
+                      </div>
+                      <div>
+                        <strong>Confiance:</strong> {(selectedResponse.confidence * 100).toFixed(1)}%
+                        {selectedResponse.label && (
+                          <span className="ml-2 text-xs">
+                            → Classée comme <strong>{selectedResponse.label}</strong>
+                          </span>
+                        )}
+                      </div>
                     </div>
                   )}
                 </div>

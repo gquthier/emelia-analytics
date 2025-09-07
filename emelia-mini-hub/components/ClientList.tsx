@@ -22,6 +22,7 @@ interface ClientListProps {
 
 export function ClientList({ clients }: ClientListProps) {
   const [selectedClientForWebhooks, setSelectedClientForWebhooks] = useState<Client | null>(null)
+  const [syncingClients, setSyncingClients] = useState<Set<string>>(new Set())
 
   const createShareLink = async (clientId: string) => {
     const response = await fetch(`/api/client/${clientId}/share-link`, {
@@ -29,6 +30,30 @@ export function ClientList({ clients }: ClientListProps) {
     })
     const result = await response.json()
     await navigator.clipboard.writeText(result.shareLink)
+  }
+
+  const syncClient = async (clientId: string) => {
+    setSyncingClients(prev => new Set(prev).add(clientId))
+    try {
+      const response = await fetch(`/api/client/${clientId}/sync`, {
+        method: 'POST'
+      })
+      if (response.ok) {
+        // Recharger la page pour voir les nouvelles données
+        window.location.reload()
+      } else {
+        throw new Error('Erreur de synchronisation')
+      }
+    } catch (error) {
+      console.error('Sync error:', error)
+      alert('Erreur lors de la synchronisation')
+    } finally {
+      setSyncingClients(prev => {
+        const newSet = new Set(prev)
+        newSet.delete(clientId)
+        return newSet
+      })
+    }
   }
 
   if (clients.length === 0) {
@@ -96,6 +121,14 @@ export function ClientList({ clients }: ClientListProps) {
                   onClick={() => setSelectedClientForWebhooks(client)}
                 >
                   Gérer webhooks
+                </Button>
+                <Button
+                  size="sm"
+                  variant="outline"
+                  onClick={() => syncClient(client.id)}
+                  disabled={syncingClients.has(client.id)}
+                >
+                  {syncingClients.has(client.id) ? 'Synchronisation...' : 'Synchroniser'}
                 </Button>
               </div>
             </div>

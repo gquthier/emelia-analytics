@@ -58,6 +58,8 @@ export function WebhooksManager({ clientId, clientName }: WebhooksManagerProps) 
   const [creating, setCreating] = useState(false)
   const [selectedCampaignType, setSelectedCampaignType] = useState<string>('email')
   const [selectedEvents, setSelectedEvents] = useState<string[]>(['REPLIED'])
+  const [customWebhookUrl, setCustomWebhookUrl] = useState<string>('')
+  const [useCustomUrl, setUseCustomUrl] = useState<boolean>(false)
   const [selectedWebhook, setSelectedWebhook] = useState<Webhook | null>(null)
 
   useEffect(() => {
@@ -82,6 +84,16 @@ export function WebhooksManager({ clientId, clientName }: WebhooksManagerProps) 
       return
     }
 
+    if (useCustomUrl && !customWebhookUrl.trim()) {
+      alert('Veuillez saisir une URL de webhook personnalisée')
+      return
+    }
+
+    if (useCustomUrl && !isValidUrl(customWebhookUrl)) {
+      alert('Veuillez saisir une URL valide (https://...)')
+      return
+    }
+
     setCreating(true)
     try {
       const response = await fetch(`/api/client/${clientId}/webhooks`, {
@@ -91,7 +103,8 @@ export function WebhooksManager({ clientId, clientName }: WebhooksManagerProps) 
         },
         body: JSON.stringify({
           campaignType: selectedCampaignType,
-          events: selectedEvents
+          events: selectedEvents,
+          customUrl: useCustomUrl ? customWebhookUrl : undefined
         })
       })
 
@@ -99,6 +112,8 @@ export function WebhooksManager({ clientId, clientName }: WebhooksManagerProps) 
         await fetchWebhooks()
         setSelectedEvents(['REPLIED'])
         setSelectedCampaignType('email')
+        setCustomWebhookUrl('')
+        setUseCustomUrl(false)
       } else {
         const error = await response.json()
         alert(`Erreur: ${error.error}`)
@@ -147,11 +162,80 @@ export function WebhooksManager({ clientId, clientName }: WebhooksManagerProps) 
     }
   }
 
+  const testWebhook = async (webhook: Webhook) => {
+    if (!confirm('Voulez-vous envoyer un test vers ce webhook ?')) {
+      return
+    }
+
+    setCreating(true)
+    try {
+      console.log('🧪 Test webhook démarré pour:', webhook.id)
+
+      const testPayload = {
+        webhookId: webhook.id,
+        testType: 'sample' as const
+      }
+
+      console.log('📤 Payload envoyé:', testPayload)
+
+      const testResponse = await fetch(`/api/client/${clientId}/test-webhook`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json; charset=utf-8',
+          'Accept': 'application/json'
+        },
+        body: JSON.stringify(testPayload)
+      })
+
+      console.log('📥 Réponse reçue:', testResponse.status, testResponse.statusText)
+
+      let testResult: any
+      const responseText = await testResponse.text()
+      
+      try {
+        testResult = JSON.parse(responseText)
+      } catch (parseError) {
+        console.error('❌ Erreur parsing réponse:', parseError)
+        testResult = {
+          success: false,
+          error: 'Invalid JSON response',
+          details: responseText
+        }
+      }
+
+      console.log('📊 Résultat du test:', testResult)
+
+      if (testResult.success && testResult.testResult?.success) {
+        alert(`✅ Test réussi !\n\nStatut: ${testResult.testResult?.status || 'OK'}\nMessage: ${testResult.message}`)
+      } else {
+        const errorMsg = testResult.error || testResult.testResult?.error || testResult.message || 'Erreur inconnue'
+        const details = testResult.details || testResult.testResult?.details || ''
+        alert(`❌ Test échoué !\n\nErreur: ${errorMsg}${details ? `\nDétails: ${details}` : ''}`)
+      }
+
+      await fetchWebhooks() // Rafraîchir pour voir les nouvelles livraisons
+    } catch (error) {
+      console.error('❌ Erreur lors du test du webhook:', error)
+      alert(`❌ Erreur lors du test du webhook\n\nDétails: ${error instanceof Error ? error.message : 'Erreur inconnue'}`)
+    } finally {
+      setCreating(false)
+    }
+  }
+
   const toggleEventSelection = (event: string) => {
     if (selectedEvents.includes(event)) {
       setSelectedEvents(selectedEvents.filter(e => e !== event))
     } else {
       setSelectedEvents([...selectedEvents, event])
+    }
+  }
+
+  const isValidUrl = (url: string) => {
+    try {
+      const urlObj = new URL(url)
+      return urlObj.protocol === 'https:' || urlObj.protocol === 'http:'
+    } catch {
+      return false
     }
   }
 
@@ -209,6 +293,46 @@ export function WebhooksManager({ clientId, clientName }: WebhooksManagerProps) 
             </p>
           </div>
 
+          <div>
+            <div className="flex items-center gap-2 mb-3">
+              <input
+                type="checkbox"
+                id="useCustomUrl"
+                checked={useCustomUrl}
+                onChange={(e) => setUseCustomUrl(e.target.checked)}
+                disabled={creating}
+                className="rounded"
+              />
+              <label htmlFor="useCustomUrl" className="text-sm font-medium">
+                Utiliser une URL de webhook personnalisée
+              </label>
+            </div>
+            
+            {useCustomUrl && (
+              <div className="space-y-2">
+                <Input
+                  placeholder="https://hook.eu1.make.com/abc123..."
+                  value={customWebhookUrl}
+                  onChange={(e) => setCustomWebhookUrl(e.target.value)}
+                  disabled={creating}
+                  className="w-full"
+                />
+                <p className="text-xs text-gray-600">
+                  💡 Exemple: URL de webhook Make, Zapier, ou tout autre service
+                </p>
+                <p className="text-xs text-orange-600">
+                  ⚠️ Si non spécifiée, l'URL par défaut d'Emelia sera utilisée
+                </p>
+              </div>
+            )}
+            
+            {!useCustomUrl && (
+              <p className="text-xs text-gray-600 bg-blue-50 p-2 rounded">
+                🔗 L'URL du webhook Emelia sera générée automatiquement
+              </p>
+            )}
+          </div>
+
           <Button 
             onClick={createWebhook} 
             disabled={creating || selectedEvents.length === 0}
@@ -237,6 +361,15 @@ export function WebhooksManager({ clientId, clientName }: WebhooksManagerProps) 
                       }`}>
                         {webhook.isActive ? 'Actif' : 'Inactif'}
                       </span>
+                      {webhook.url.includes('/api/webhook/emelia') ? (
+                        <span className="px-2 py-1 text-xs rounded bg-blue-100 text-blue-800">
+                          📡 Emelia
+                        </span>
+                      ) : (
+                        <span className="px-2 py-1 text-xs rounded bg-purple-100 text-purple-800">
+                          🎯 Personnalisé
+                        </span>
+                      )}
                     </div>
                     <p className="text-sm text-gray-600">
                       Événements: {webhook.events.join(', ')}
@@ -246,6 +379,15 @@ export function WebhooksManager({ clientId, clientName }: WebhooksManagerProps) 
                     </p>
                   </div>
                   <div className="flex gap-2">
+                    <Button
+                      size="sm"
+                      variant="outline"
+                      onClick={() => testWebhook(webhook)}
+                      disabled={creating || !webhook.isActive}
+                      className="text-blue-600 hover:text-blue-700"
+                    >
+                      🧪 Tester
+                    </Button>
                     <Button
                       size="sm"
                       variant="outline"

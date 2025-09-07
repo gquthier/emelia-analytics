@@ -6,11 +6,12 @@ import { EmeliaAPIClient } from '@/lib/emelia'
 // GET - Récupérer un client spécifique
 export async function GET(
   request: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ clientId: string }> }
 ) {
   try {
+    const { clientId } = await params
     const client = await prisma.client.findUnique({
-      where: { id: params.id },
+      where: { id: clientId },
       include: {
         campaigns: true,
         webhooks: true,
@@ -39,9 +40,10 @@ export async function GET(
 // PUT - Mettre à jour un client
 export async function PUT(
   request: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ clientId: string }> }
 ) {
   try {
+    const { clientId } = await params
     const {
       name,
       apiKey,
@@ -55,7 +57,7 @@ export async function PUT(
 
     // Vérifier que le client existe
     const existingClient = await prisma.client.findUnique({
-      where: { id: params.id }
+      where: { id: clientId }
     })
 
     if (!existingClient) {
@@ -76,7 +78,7 @@ export async function PUT(
       const code3Exists = await prisma.client.findFirst({
         where: { 
           code3: code3.toUpperCase(),
-          id: { not: params.id }
+          id: { not: clientId }
         }
       })
 
@@ -100,7 +102,7 @@ export async function PUT(
 
     // Mettre à jour le client
     const updatedClient = await prisma.client.update({
-      where: { id: params.id },
+      where: { id: clientId },
       data: {
         name,
         code3: code3.toUpperCase(),
@@ -127,12 +129,12 @@ export async function PUT(
 // DELETE - Supprimer un client
 export async function DELETE(
   request: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: { params: { clientId: string } }
 ) {
   try {
     // Vérifier que le client existe
     const existingClient = await prisma.client.findUnique({
-      where: { id: params.id }
+      where: { id: params.clientId }
     })
 
     if (!existingClient) {
@@ -141,7 +143,7 @@ export async function DELETE(
 
     // Supprimer le client (cascade supprimera les relations)
     await prisma.client.delete({
-      where: { id: params.id }
+      where: { id: params.clientId }
     })
 
     return NextResponse.json({

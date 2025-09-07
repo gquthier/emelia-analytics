@@ -61,6 +61,16 @@ export function ThreadsList({ threads }: ThreadsListProps) {
     const lastMessage = thread.messages[thread.messages.length - 1]
     if (!lastMessage) return 'Aucun message'
     
+    // If it's an inbound message with reply content, extract the actual reply
+    if (lastMessage.direction === 'INBOUND' && lastMessage.text.includes('💬 Contenu de la réponse:')) {
+      const replyMatch = lastMessage.text.match(/💬 Contenu de la réponse:\s*"([^"]*)"/)
+      if (replyMatch && replyMatch[1]) {
+        const replyContent = replyMatch[1]
+        const preview = replyContent.substring(0, 100)
+        return `💬 "${preview.length < replyContent.length ? preview + '...' : preview}"`
+      }
+    }
+    
     const preview = lastMessage.text.substring(0, 100)
     return preview.length < lastMessage.text.length ? preview + '...' : preview
   }

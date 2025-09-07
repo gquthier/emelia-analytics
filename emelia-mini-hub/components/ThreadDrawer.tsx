@@ -143,7 +143,48 @@ export function ThreadDrawer({ thread, isOpen, onClose }: ThreadDrawerProps) {
                       </div>
                     </div>
                     <div className="text-sm text-gray-900 whitespace-pre-wrap">
-                      {message.text}
+                      {message.direction === 'INBOUND' && message.text.includes('💬 Contenu de la réponse:') ? (
+                        <div>
+                          {/* Extract and highlight the actual reply content */}
+                          {(() => {
+                            const parts = message.text.split('💬 Contenu de la réponse:')
+                            const beforeReply = parts[0]
+                            const afterReplyPart = parts[1]
+                            
+                            if (afterReplyPart) {
+                              const replyMatch = afterReplyPart.match(/"([^"]*)"/)
+                              const replyContent = replyMatch ? replyMatch[1] : ''
+                              const afterReply = afterReplyPart.replace(/^[^"]*"[^"]*"/, '').trim()
+                              
+                              return (
+                                <div className="space-y-3">
+                                  {/* Reply content highlighted */}
+                                  <div className="bg-blue-100 border-l-4 border-blue-500 p-3 rounded">
+                                    <div className="text-xs font-semibold text-blue-700 mb-1">💬 RÉPONSE DU PROSPECT</div>
+                                    <div className="text-sm font-medium text-blue-900 whitespace-pre-wrap">
+                                      {replyContent || 'Contenu de réponse non disponible'}
+                                    </div>
+                                  </div>
+                                  
+                                  {/* Contact info in collapsible details */}
+                                  <details className="text-xs text-gray-600">
+                                    <summary className="cursor-pointer font-medium hover:text-gray-800">
+                                      📋 Informations détaillées
+                                    </summary>
+                                    <div className="mt-2 pl-2 border-l-2 border-gray-200">
+                                      <div className="whitespace-pre-wrap">{beforeReply.trim()}</div>
+                                      {afterReply && <div className="whitespace-pre-wrap">{afterReply}</div>}
+                                    </div>
+                                  </details>
+                                </div>
+                              )
+                            }
+                            return message.text
+                          })()}
+                        </div>
+                      ) : (
+                        message.text
+                      )}
                     </div>
                     {(message.fromAddr || message.toAddr || (message as any).messageId) && (
                       <div className="text-xs text-gray-500 mt-2 border-t pt-2">

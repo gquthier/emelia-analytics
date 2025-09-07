@@ -1,239 +1,232 @@
 'use client'
 
 import { useState, useEffect } from 'react'
-import { 
-  LineChart, 
-  Line, 
-  XAxis, 
-  YAxis, 
-  CartesianGrid, 
-  Tooltip, 
-  Legend, 
-  ResponsiveContainer,
-  ReferenceLine 
-} from 'recharts'
+import { ComposedChart, Bar, Line, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer } from 'recharts'
 import { Card, CardHeader, CardTitle, CardContent } from '@/components/ui/card'
-import { Skeleton } from '@/components/ui/skeleton'
-import { TrendingUp } from 'lucide-react'
-import { PerformanceToolbar } from '@/components/dashboard/PerformanceToolbar'
-import { format, parseISO } from 'date-fns'
+import { Button } from '@/components/ui/button'
+import { Calendar } from 'lucide-react'
+import { format, subDays, isAfter, isBefore, startOfDay, endOfDay } from 'date-fns'
 import { fr } from 'date-fns/locale'
 
-interface TimeSeriesDataPoint {
+interface TimeSeriesChartProps {
+  clientId: string
+}
+
+interface ChartData {
   date: string
   sent: number
   delivered: number
   opens: number
   clicks: number
   replies: number
-  bounces: number
+  interested: number
 }
 
-interface TimeSeriesChartProps {
-  clientId: string
-  height?: number
-}
-
-// Colors matching our design tokens
-const METRIC_COLORS = {
-  sent: 'rgb(107, 114, 128)', // gray-500
-  delivered: 'rgb(59, 130, 246)', // blue-500  
-  opens: 'rgb(37, 99, 235)', // accent
-  clicks: 'rgb(245, 158, 11)', // amber-500
-  replies: 'rgb(34, 197, 94)', // green-500
-  bounces: 'rgb(239, 68, 68)', // red-500
-}
-
-function ChartSkeleton() {
-  return (
-    <Card>
-      <CardHeader>
-        <div className="space-y-2">
-          <Skeleton className="h-6 w-48" />
-          <Skeleton className="h-4 w-32" />
-        </div>
-      </CardHeader>
-      <CardContent>
-        <Skeleton className="h-80 w-full" />
-      </CardContent>
-    </Card>
-  )
-}
-
-function EmptyChart() {
-  return (
-    <Card>
-      <CardHeader>
-        <CardTitle className="caps">Évolution Temporelle</CardTitle>
-      </CardHeader>
-      <CardContent>
-        <div className="h-80 flex items-center justify-center">
-          <div className="text-center">
-            <div className="w-16 h-16 bg-brand-muted/10 rounded-full flex items-center justify-center mx-auto mb-4">
-              <TrendingUp className="w-8 h-8 text-brand-muted" />
-            </div>
-            <h3 className="font-semibold text-brand mb-2">Pas de données temporelles</h3>
-            <p className="text-brand-muted text-sm">
-              Les données apparaîtront après la première synchronisation
-            </p>
-          </div>
-        </div>
-      </CardContent>
-    </Card>
-  )
-}
-
-// Custom tooltip component
-function CustomTooltip({ active, payload, label }: any) {
-  if (active && payload && payload.length) {
-    return (
-      <div className="bg-brand-card border border-brand-border p-3 rounded-lg shadow-lg">
-        <p className="font-medium text-brand mb-2">
-          {format(parseISO(label), 'dd MMMM yyyy', { locale: fr })}
-        </p>
-        {payload.map((entry: any, index: number) => (
-          <div key={index} className="flex items-center gap-2 text-sm">
-            <div 
-              className="w-3 h-3 rounded-full"
-              style={{ backgroundColor: entry.color }}
-            />
-            <span className="text-brand-muted">{entry.name}:</span>
-            <span className="font-medium text-brand">
-              {entry.value.toLocaleString('fr-FR')}
-            </span>
-          </div>
-        ))}
-      </div>
-    )
-  }
-  return null
-}
-
-export function TimeSeriesChart({ clientId, height = 400 }: TimeSeriesChartProps) {
-  const [data, setData] = useState<TimeSeriesDataPoint[]>([])
+export function TimeSeriesChart({ clientId }: TimeSeriesChartProps) {
+  const [data, setData] = useState<ChartData[]>([])
+  const [filteredData, setFilteredData] = useState<ChartData[]>([])
   const [loading, setLoading] = useState(true)
-  const [selectedMetrics, setSelectedMetrics] = useState(['opens', 'clicks', 'replies'])
-  const [groupBy, setGroupBy] = useState<'day' | 'week' | 'month'>('day')
-  const [showSmoothing, setShowSmoothing] = useState(false)
+  const [dateRange, setDateRange] = useState({ days: 30 })
+  const [startDate, setStartDate] = useState<Date>(subDays(new Date(), 30))
+  const [endDate, setEndDate] = useState<Date>(new Date())
 
   useEffect(() => {
-    fetchData()
-  }, [clientId, groupBy])
-
-  const fetchData = async () => {
-    try {
-      setLoading(true)
-      const response = await fetch(`/api/client/${clientId}/timeline?groupBy=${groupBy}`)
-      if (!response.ok) throw new Error('Failed to fetch timeline data')
-      
-      const result = await response.json()
-      setData(result.timeline || [])
-    } catch (error) {
-      console.error('Error fetching timeline:', error)
-      setData([])
-    } finally {
-      setLoading(false)
+    const fetchData = async () => {
+      try {
+        const params = new URLSearchParams({
+          groupBy: 'day',
+          days: dateRange.days.toString()
+        })
+        const response = await fetch(`/api/client/${clientId}/timeline?${params}`)
+        if (response.ok) {
+          const result = await response.json()
+          setData(result.data || [])
+        }
+      } catch (error) {
+        console.error('Failed to fetch timeline data:', error)
+      } finally {
+        setLoading(false)
+      }
     }
-  }
 
-  const handleExport = () => {
-    const csvContent = [
-      ['Date', ...selectedMetrics.map(m => m.charAt(0).toUpperCase() + m.slice(1))],
-      ...data.map(row => [
-        format(parseISO(row.date), 'yyyy-MM-dd'),
-        ...selectedMetrics.map(metric => row[metric as keyof TimeSeriesDataPoint])
-      ])
-    ].map(row => row.join(',')).join('\n')
+    fetchData()
+  }, [clientId, dateRange.days])
 
-    const blob = new Blob([csvContent], { type: 'text/csv' })
-    const url = URL.createObjectURL(blob)
-    const a = document.createElement('a')
-    a.href = url
-    a.download = `timeline-${clientId}-${Date.now()}.csv`
-    a.click()
-    URL.revokeObjectURL(url)
-  }
+  useEffect(() => {
+    // Filter data based on date range
+    const filtered = data.filter(item => {
+      const itemDate = startOfDay(new Date(item.date))
+      return !isBefore(itemDate, startOfDay(startDate)) && !isAfter(itemDate, endOfDay(endDate))
+    })
+    setFilteredData(filtered)
+  }, [data, startDate, endDate])
 
   if (loading) {
-    return <ChartSkeleton />
-  }
-
-  if (!data.length) {
-    return <EmptyChart />
-  }
-
-  return (
-    <div className="space-y-4">
+    return (
       <Card>
         <CardHeader>
-          <div className="flex items-center justify-between">
-            <div>
-              <CardTitle className="caps">Évolution Temporelle</CardTitle>
-              <p className="text-brand-muted typography-editorial mt-1">
-                Performance sur les {data.length} derniers points
-              </p>
-            </div>
-          </div>
+          <CardTitle>Volume d'envoi et réponses par jour</CardTitle>
         </CardHeader>
-        
         <CardContent>
-          <div className="space-y-4">
-            <PerformanceToolbar
-              selectedMetrics={selectedMetrics}
-              onMetricsChange={setSelectedMetrics}
-              groupBy={groupBy}
-              onGroupByChange={setGroupBy}
-              onExport={handleExport}
-              showSmoothing={showSmoothing}
-              onSmoothingChange={setShowSmoothing}
-            />
-
-            <div style={{ height }}>
-              <ResponsiveContainer width="100%" height="100%">
-                <LineChart data={data} margin={{ top: 5, right: 30, left: 20, bottom: 5 }}>
-                  <CartesianGrid 
-                    strokeDasharray="3 3" 
-                    stroke="rgb(var(--brand-border))"
-                    opacity={0.3}
-                  />
-                  <XAxis 
-                    dataKey="date"
-                    tickFormatter={(value) => format(parseISO(value), 'dd/MM', { locale: fr })}
-                    stroke="rgb(var(--brand-muted))"
-                    fontSize={12}
-                  />
-                  <YAxis 
-                    stroke="rgb(var(--brand-muted))"
-                    fontSize={12}
-                    tickFormatter={(value) => value.toLocaleString('fr-FR')}
-                  />
-                  <Tooltip content={<CustomTooltip />} />
-                  <Legend 
-                    wrapperStyle={{ 
-                      paddingTop: '20px', 
-                      fontSize: '14px',
-                      color: 'rgb(var(--brand-muted))'
-                    }}
-                  />
-                  
-                  {selectedMetrics.map((metric) => (
-                    <Line
-                      key={metric}
-                      type={showSmoothing ? "monotone" : "linear"}
-                      dataKey={metric}
-                      stroke={METRIC_COLORS[metric as keyof typeof METRIC_COLORS]}
-                      strokeWidth={2}
-                      dot={{ fill: METRIC_COLORS[metric as keyof typeof METRIC_COLORS], strokeWidth: 2, r: 4 }}
-                      activeDot={{ r: 6, stroke: METRIC_COLORS[metric as keyof typeof METRIC_COLORS], strokeWidth: 2 }}
-                      name={metric.charAt(0).toUpperCase() + metric.slice(1)}
-                    />
-                  ))}
-                </LineChart>
-              </ResponsiveContainer>
-            </div>
+          <div className="h-64 flex items-center justify-center">
+            <p className="text-gray-500">Chargement des données...</p>
           </div>
         </CardContent>
       </Card>
-    </div>
+    )
+  }
+
+  if (data.length === 0) {
+    return (
+      <Card>
+        <CardHeader>
+          <CardTitle>Volume d'envoi et réponses par jour</CardTitle>
+        </CardHeader>
+        <CardContent>
+          <div className="h-64 flex items-center justify-center">
+            <p className="text-gray-500">Aucune donnée disponible pour cette période</p>
+          </div>
+        </CardContent>
+      </Card>
+    )
+  }
+
+  return (
+    <Card>
+      <CardHeader>
+        <div className="flex items-center justify-between">
+          <CardTitle>Volume d'envoi et réponses par jour</CardTitle>
+          <div className="flex items-center gap-2">
+            <Calendar className="h-4 w-4" />
+            <div className="flex gap-2">
+              <Button 
+                variant={dateRange.days === 7 ? "default" : "outline"} 
+                size="sm"
+                onClick={() => {
+                  setDateRange({ days: 7 })
+                  setStartDate(subDays(new Date(), 7))
+                  setEndDate(new Date())
+                }}
+              >
+                7j
+              </Button>
+              <Button 
+                variant={dateRange.days === 30 ? "default" : "outline"} 
+                size="sm"
+                onClick={() => {
+                  setDateRange({ days: 30 })
+                  setStartDate(subDays(new Date(), 30))
+                  setEndDate(new Date())
+                }}
+              >
+                30j
+              </Button>
+              <Button 
+                variant={dateRange.days === 90 ? "default" : "outline"} 
+                size="sm"
+                onClick={() => {
+                  setDateRange({ days: 90 })
+                  setStartDate(subDays(new Date(), 90))
+                  setEndDate(new Date())
+                }}
+              >
+                90j
+              </Button>
+            </div>
+          </div>
+        </div>
+      </CardHeader>
+      <CardContent>
+        <div className="mb-4">
+          <div className="flex items-center gap-4 text-sm text-gray-600">
+            <span>Période: {format(startDate, 'dd MMM yyyy', { locale: fr })} - {format(endDate, 'dd MMM yyyy', { locale: fr })}</span>
+            <span>({filteredData.length} jour{filteredData.length > 1 ? 's' : ''})</span>
+          </div>
+        </div>
+        <div className="h-80">
+          <ResponsiveContainer width="100%" height="100%">
+            <ComposedChart data={filteredData} margin={{ top: 20, right: 50, left: 20, bottom: 5 }}>
+              <CartesianGrid strokeDasharray="3 3" className="opacity-30" />
+              <XAxis 
+                dataKey="date" 
+                tickFormatter={(date) => format(new Date(date), 'dd/MM', { locale: fr })}
+                tick={{ fontSize: 12 }}
+              />
+              {/* Left Y-axis for sent emails (high values) */}
+              <YAxis 
+                yAxisId="left"
+                tick={{ fontSize: 12 }} 
+                label={{ value: 'Emails envoyés', angle: -90, position: 'insideLeft', style: { textAnchor: 'middle' } }}
+                stroke="#3b82f6"
+              />
+              {/* Right Y-axis for replies and interested (low values) */}
+              <YAxis 
+                yAxisId="right"
+                orientation="right"
+                tick={{ fontSize: 12 }}
+                label={{ value: 'Réponses & Intéressés', angle: 90, position: 'insideRight', style: { textAnchor: 'middle' } }}
+                stroke="#10b981"
+              />
+              <Tooltip 
+                labelFormatter={(date) => format(new Date(date), 'EEEE dd MMMM yyyy', { locale: fr })}
+                formatter={(value: number, name: string) => {
+                  let label = '';
+                  switch (name) {
+                    case 'sent': label = 'Emails envoyés'; break;
+                    case 'replies': label = 'Réponses reçues'; break;
+                    case 'interested': label = 'Intéressés'; break;
+                    default: label = name;
+                  }
+                  return [value.toLocaleString('fr-FR'), label];
+                }}
+                contentStyle={{
+                  backgroundColor: '#fff',
+                  border: '1px solid #e5e7eb',
+                  borderRadius: '8px',
+                  boxShadow: '0 10px 15px -3px rgba(0, 0, 0, 0.1)'
+                }}
+              />
+              <Legend 
+                formatter={(value) => {
+                  switch (value) {
+                    case 'sent': return 'Emails envoyés';
+                    case 'replies': return 'Réponses reçues';
+                    case 'interested': return 'Intéressés';
+                    default: return value;
+                  }
+                }}
+              />
+              {/* Bar for sent emails on left axis */}
+              <Bar 
+                dataKey="sent" 
+                fill="#3b82f6" 
+                name="sent"
+                yAxisId="left"
+                radius={[2, 2, 0, 0]}
+                opacity={0.8}
+              />
+              {/* Bar for replies on right axis */}
+              <Bar 
+                dataKey="replies" 
+                fill="#10b981" 
+                name="replies"
+                yAxisId="right"
+                radius={[2, 2, 0, 0]}
+                opacity={0.8}
+              />
+              {/* Bar for interested on right axis */}
+              <Bar 
+                dataKey="interested" 
+                fill="#f59e0b" 
+                name="interested"
+                yAxisId="right"
+                radius={[2, 2, 0, 0]}
+                opacity={0.8}
+              />
+            </ComposedChart>
+          </ResponsiveContainer>
+        </div>
+      </CardContent>
+    </Card>
   )
 }

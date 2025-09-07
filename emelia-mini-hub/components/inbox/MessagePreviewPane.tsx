@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useMemo } from 'react'
+import { useState, useMemo, useEffect } from 'react'
 import { 
   Reply,
   Tag,
@@ -57,6 +57,11 @@ const LABEL_CONFIG = {
 
 export function MessagePreviewPane({ thread, clientId }: MessagePreviewPaneProps) {
   const [isUpdatingLabel, setIsUpdatingLabel] = useState(false)
+  const [isClient, setIsClient] = useState(false)
+
+  useEffect(() => {
+    setIsClient(true)
+  }, [])
 
   const handleLabelUpdate = async (newLabel: string) => {
     if (!thread) return
@@ -89,13 +94,15 @@ export function MessagePreviewPane({ thread, clientId }: MessagePreviewPaneProps
   }
 
   const formatDate = (date: Date) => {
-    return new Intl.DateTimeFormat('fr-FR', {
+    // Use a more consistent format that works the same on server and client
+    return date.toLocaleString('fr-FR', {
       day: '2-digit',
       month: 'short',
       year: 'numeric',
       hour: '2-digit',
-      minute: '2-digit'
-    }).format(date)
+      minute: '2-digit',
+      timeZone: 'Europe/Paris'
+    })
   }
 
   const sortedMessages = useMemo(() => {
@@ -130,7 +137,7 @@ export function MessagePreviewPane({ thread, clientId }: MessagePreviewPaneProps
         <div className="flex items-start justify-between">
           <div className="flex-1 min-w-0">
             <h2 className="text-xl font-semibold text-brand mb-1">
-              {thread.prospectEmail}
+              {isClient ? thread.prospectEmail : 'Chargement...'}
             </h2>
             <div className="flex items-center gap-4 text-sm text-brand-muted">
               <span>Campagne: {thread.campaignName}</span>
@@ -243,10 +250,91 @@ export function MessagePreviewPane({ thread, clientId }: MessagePreviewPaneProps
                   
                   <CardContent>
                     <div className="prose prose-sm max-w-none">
-                      <div className="whitespace-pre-wrap text-brand leading-relaxed">
-                        {message.text}
+                      <div className="whitespace-pre-wrap text-brand leading-relaxed bg-gray-50 p-4 rounded-lg border-l-4 border-blue-500">
+                        {/* Parse and display clean message content for inbound messages */}
+                        {isInbound && message.text.includes('💬 Contenu de la réponse:') ? (
+                          // Extract reply content from formatted message
+                          (() => {
+                            const replyMatch = message.text.match(/💬 Contenu de la réponse:\s*"([^"]*)"/)
+                            if (replyMatch && replyMatch[1]) {
+                              const replyContent = replyMatch[1]
+                              const contactMatch = message.text.match(/📩 Réponse de ([^\n]+)/)
+                              const contactName = contactMatch ? contactMatch[1] : 'Contact'
+                              
+                              return (
+                                <div className="space-y-3">
+                                  <div className="bg-blue-100 border-l-4 border-blue-500 p-3 rounded">
+                                    <div className="text-xs font-semibold text-blue-700 mb-1">💬 RÉPONSE DE {contactName}</div>
+                                    <div className="text-sm font-medium text-blue-900 whitespace-pre-wrap bg-white p-3 rounded shadow-sm">
+                                      {replyContent}
+                                    </div>
+                                  </div>
+                                  
+                                  {/* Contact details in collapsible format */}
+                                  <details className="text-xs text-gray-600">
+                                    <summary className="cursor-pointer font-medium hover:text-gray-800">
+                                      📋 Informations détaillées du contact
+                                    </summary>
+                                    <div className="mt-2 pl-2 border-l-2 border-gray-200 whitespace-pre-wrap">
+                                      {message.text.split('💬 Contenu de la réponse:')[0].trim()}
+                                      {message.text.split('"')[2] && message.text.split('"')[2].trim()}
+                                    </div>
+                                  </details>
+                                </div>
+                              )
+                            }
+                            return (
+                              <div>
+                                <div className="text-sm font-medium text-orange-700 mb-2">📩 Réponse reçue</div>
+                                <div className="bg-orange-50 border border-orange-200 p-3 rounded">
+                                  <p className="text-sm text-orange-800 mb-2">Ce prospect a répondu à votre campagne.</p>
+                                  <p className="text-xs text-orange-600">Le contenu exact de la réponse est disponible dans votre interface Emelia.</p>
+                                </div>
+                                <details className="mt-3 text-xs text-gray-600">
+                                  <summary className="cursor-pointer font-medium hover:text-gray-800">
+                                    📋 Informations détaillées
+                                  </summary>
+                                  <div className="mt-2 pl-2 border-l-2 border-gray-200 whitespace-pre-wrap">
+                                    {message.text}
+                                  </div>
+                                </details>
+                              </div>
+                            )
+                          })()
+                        ) : (
+                          message.text
+                        )}
                       </div>
                     </div>
+                    
+                    {/* Show Emelia status for inbound messages */}
+                    {isInbound && message.text.includes('📩 Réponse de') && (
+                      <div className="mt-3 p-3 bg-blue-50 border border-blue-200 rounded-lg">
+                        <div className="flex items-center gap-2 text-sm font-medium text-blue-800 mb-2">
+                          📡 <span>Statut Emelia</span>
+                          <span className="inline-flex items-center px-2 py-1 rounded-full bg-green-100 text-green-800 text-xs font-medium">
+                            ✅ REPLIED
+                          </span>
+                        </div>
+                        <div className="text-xs text-blue-700 space-y-1">
+                          {(() => {
+                            const lines = message.text.split('\n')
+                            const senderLine = lines.find(line => line.includes('📧 Expéditeur:'))
+                            const msgIdLine = lines.find(line => line.includes('🔗 Message ID:'))
+                            const dateLine = lines.find(line => line.includes('Date:'))
+                            
+                            return (
+                              <>
+                                {dateLine && <div><strong>Date originale:</strong> {dateLine.replace('Date: ', '')}</div>}
+                                {senderLine && <div><strong>Expéditeur:</strong> {senderLine.replace('📧 Expéditeur: ', '')}</div>}
+                                {msgIdLine && <div><strong>Message ID:</strong> <code className="bg-gray-100 px-1 rounded text-xs">{msgIdLine.replace('🔗 Message ID: ', '')}</code></div>}
+                                <div><strong>Source:</strong> EMELIA_WEBHOOK</div>
+                              </>
+                            )
+                          })()}
+                        </div>
+                      </div>
+                    )}
                   </CardContent>
                 </Card>
               </div>

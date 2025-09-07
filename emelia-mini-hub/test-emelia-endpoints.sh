@@ -1,100 +1,80 @@
 #!/bin/bash
 
-echo "🧪 TEST ENDPOINTS EMELIA POUR RÉCUPÉRER LES RÉPONSES"
-echo "=================================================="
+# Test script pour explorer les endpoints Emelia API
+# Usage: ./test-emelia-endpoints.sh YOUR_API_KEY
 
-# Variables
-CLIENT_ID="cmewjxzzr00004wrea8xzkxg3"
-CAMPAIGN_ID="688f6729f48fa50a7a697158"
+API_KEY="$1"
 BASE_URL="https://api.emelia.io"
 
-# Récupération de la clé API via l'endpoint debug
-echo "🔑 Récupération de la clé API..."
-API_KEY=$(curl -s "http://localhost:3000/api/debug/emelia?clientId=$CLIENT_ID&action=campaigns" | jq -r '.campaigns[0] | keys[0]' 2>/dev/null || echo "")
+if [ -z "$API_KEY" ]; then
+    echo "❌ Usage: ./test-emelia-endpoints.sh YOUR_API_KEY"
+    exit 1
+fi
 
-echo "📝 Test des différents endpoints pour les réponses..."
-echo "Campagne cible: $CAMPAIGN_ID"
+echo "🔍 Testing Emelia API endpoints for message content..."
+echo "🔑 Using API Key: ${API_KEY:0:10}..."
 echo ""
 
-# Liste des endpoints à tester
-endpoints=(
-    "/emails/campaigns/$CAMPAIGN_ID/activities"
-    "/emails/campaigns/$CAMPAIGN_ID/replies"
-    "/emails/campaigns/$CAMPAIGN_ID/messages"  
-    "/emails/campaigns/$CAMPAIGN_ID/events"
-    "/campaigns/$CAMPAIGN_ID/activities"
-    "/campaigns/$CAMPAIGN_ID/replies"
-    "/campaigns/$CAMPAIGN_ID/messages"
-    "/activities?campaignId=$CAMPAIGN_ID"
-    "/replies?campaignId=$CAMPAIGN_ID"
-    "/messages?campaignId=$CAMPAIGN_ID"
-    "/events?campaignId=$CAMPAIGN_ID"
-    "/emails/campaigns/$CAMPAIGN_ID/activities?event=REPLIED"
-    "/emails/campaigns/$CAMPAIGN_ID/activities?type=REPLIED"
-)
+# Common headers
+HEADERS="Authorization: Bearer $API_KEY"
 
-# Fonction pour tester un endpoint
-test_endpoint() {
-    local endpoint="$1"
-    echo "🔍 Testing: $endpoint"
-    
-    # Test avec notre API key récupérée via debug
-    response=$(curl -s "http://localhost:3000/api/debug/emelia?clientId=$CLIENT_ID&action=test-endpoint&campaignId=$CAMPAIGN_ID&endpoint=$endpoint")
-    
-    status=$(echo "$response" | jq -r '.status // "error"')
-    
-    if [ "$status" = "200" ]; then
-        # Analyser les types d'événements
-        events=$(echo "$response" | jq -r '.response.activities[]?.event // .response[]?.event // empty' | sort | uniq -c | head -10)
-        count=$(echo "$response" | jq -r '.response.activities | length // .response | length // 0' 2>/dev/null || echo "0")
-        
-        echo "  ✅ SUCCESS: $count éléments"
-        echo "  📊 Event types:"
-        echo "$events" | sed 's/^/    /'
-        
-        # Chercher spécifiquement les réponses
-        replies=$(echo "$response" | jq -r '.response.activities[]? | select(.event == "REPLIED" or .event == "RE_REPLY") // .response[]? | select(.event == "REPLIED" or .event == "RE_REPLY") // empty' | wc -l)
-        if [ "$replies" -gt 0 ]; then
-            echo "  🎉 FOUND $replies REPLIES!"
-        fi
-    else
-        echo "  ❌ FAILED: HTTP $status"
-    fi
-    echo ""
-}
+# Test 1: Get user info
+echo "📋 1. Testing /me endpoint..."
+curl -s -H "$HEADERS" "$BASE_URL/me" | jq -r '.id // "FAILED"' | head -1
+echo ""
 
-# Test de tous les endpoints
-for endpoint in "${endpoints[@]}"; do
-    test_endpoint "$endpoint"
-    sleep 0.5
-done
+# Test 2: Get campaigns (to find a campaign ID)
+echo "📋 2. Getting campaigns..."
+CAMPAIGN_ID=$(curl -s -H "$HEADERS" "$BASE_URL/campaigns" | jq -r '.campaigns[0]._id // .campaigns[0].id // "NONE"')
+echo "Found campaign ID: $CAMPAIGN_ID"
+echo ""
 
-# Test pagination approfondie
-echo "📄 Test pagination approfondie sur l'endpoint activities..."
-for page in {1..10}; do
-    echo "📄 Page $page:"
-    response=$(curl -s "http://localhost:3000/api/debug/emelia?clientId=$CLIENT_ID&action=test-endpoint&campaignId=$CAMPAIGN_ID&endpoint=/emails/campaigns/$CAMPAIGN_ID/activities?page=$page")
+if [ "$CAMPAIGN_ID" != "NONE" ] && [ "$CAMPAIGN_ID" != "null" ]; then
+    echo "📋 3. Testing campaign-specific endpoints..."
     
-    status=$(echo "$response" | jq -r '.status // "error"')
-    if [ "$status" = "200" ]; then
-        count=$(echo "$response" | jq -r '.response.activities | length // 0' 2>/dev/null || echo "0")
-        events=$(echo "$response" | jq -r '.response.activities[]?.event // empty' | sort | uniq -c)
-        replies=$(echo "$response" | jq -r '.response.activities[]? | select(.event == "REPLIED" or .event == "RE_REPLY") // empty' | wc -l)
-        
-        echo "  📊 $count activités - Events: $(echo "$events" | tr '\n' ', ')"
-        if [ "$replies" -gt 0 ]; then
-            echo "  🎉 FOUND $replies REPLIES ON PAGE $page!"
-        fi
-        
-        if [ "$count" -eq 0 ]; then
-            echo "  📄 Fin de pagination"
-            break
-        fi
-    else
-        echo "  ❌ Page $page failed"
-        break
-    fi
-done
+    # Test campaign activities with different params
+    echo "  🔍 3a. Campaign activities (basic):"
+    curl -s -H "$HEADERS" "$BASE_URL/campaigns/$CAMPAIGN_ID/activities?limit=1" | jq -r '.activities[0].event // "NO_ACTIVITIES"'
+    
+    echo "  🔍 3b. Campaign activities (with message content):"
+    curl -s -H "$HEADERS" "$BASE_URL/campaigns/$CAMPAIGN_ID/activities?limit=1&include=message,reply,content" | jq -r '.activities[0] | keys[]' 2>/dev/null || echo "FAILED"
+    
+    echo "  🔍 3c. Campaign messages endpoint:"
+    curl -s -H "$HEADERS" "$BASE_URL/campaigns/$CAMPAIGN_ID/messages?limit=1" | jq -r '.messages[0].content // .messages[0].text // "NO_MESSAGES"' 2>/dev/null || echo "ENDPOINT_NOT_FOUND"
+    
+    echo "  🔍 3d. Campaign replies endpoint:"
+    curl -s -H "$HEADERS" "$BASE_URL/campaigns/$CAMPAIGN_ID/replies?limit=1" | jq -r '.replies[0].content // .replies[0].text // "NO_REPLIES"' 2>/dev/null || echo "ENDPOINT_NOT_FOUND"
+    
+    echo "  🔍 3e. Campaign conversations endpoint:"
+    curl -s -H "$HEADERS" "$BASE_URL/campaigns/$CAMPAIGN_ID/conversations?limit=1" | jq -r '.conversations[0].messages[0].content // "NO_CONVERSATIONS"' 2>/dev/null || echo "ENDPOINT_NOT_FOUND"
+fi
 
 echo ""
-echo "✅ Test terminé!"
+echo "📋 4. Testing generic message endpoints..."
+
+# Test 4: Generic message endpoints
+echo "  🔍 4a. All messages:"
+curl -s -H "$HEADERS" "$BASE_URL/messages?limit=1" | jq -r '.messages[0].content // .messages[0].text // "NO_MESSAGES"' 2>/dev/null || echo "ENDPOINT_NOT_FOUND"
+
+echo "  🔍 4b. All replies:"
+curl -s -H "$HEADERS" "$BASE_URL/replies?limit=1" | jq -r '.replies[0].content // .replies[0].text // "NO_REPLIES"' 2>/dev/null || echo "ENDPOINT_NOT_FOUND"
+
+echo "  🔍 4c. All conversations:"
+curl -s -H "$HEADERS" "$BASE_URL/conversations?limit=1" | jq -r '.conversations[0].messages[0].content // "NO_CONVERSATIONS"' 2>/dev/null || echo "ENDPOINT_NOT_FOUND"
+
+echo ""
+echo "📋 5. Testing GraphQL endpoint for messages..."
+
+GRAPHQL_QUERY='{
+  "query": "query GetMessages { messages(first: 1) { edges { node { id content text body } } } }"
+}'
+
+curl -s -X POST \
+  -H "$HEADERS" \
+  -H "Content-Type: application/json" \
+  -d "$GRAPHQL_QUERY" \
+  "$BASE_URL/graphql" | jq -r '.data.messages.edges[0].node.content // .errors[0].message // "GRAPHQL_FAILED"' 2>/dev/null || echo "GRAPHQL_ENDPOINT_NOT_FOUND"
+
+echo ""
+echo "✅ Test completed! Check the results above to see which endpoints work."
+echo "💡 If any endpoint returns actual content, we can integrate it into the system."

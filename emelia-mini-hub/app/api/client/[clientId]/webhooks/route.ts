@@ -7,15 +7,16 @@ const prisma = new PrismaClient()
 interface CreateWebhookRequest {
   campaignType: 'email' | 'advanced' | 'linkedin'
   events: string[] // ['REPLIED', 'SENT', 'OPENED']
+  customUrl?: string // URL personnalisée optionnelle
 }
 
 // GET - Récupérer tous les webhooks d'un client
 export async function GET(
   request: NextRequest,
-  { params }: { params: { clientId: string } }
+  { params }: { params: Promise<{ clientId: string }> }
 ) {
   try {
-    const clientId = params.clientId
+    const { clientId } = await params
 
     const webhooks = await prisma.webhook.findMany({
       where: { clientId },
@@ -51,11 +52,11 @@ export async function GET(
 // POST - Créer un nouveau webhook
 export async function POST(
   request: NextRequest,
-  { params }: { params: { clientId: string } }
+  { params }: { params: Promise<{ clientId: string }> }
 ) {
   try {
-    const clientId = params.clientId
-    const { campaignType, events }: CreateWebhookRequest = await request.json()
+    const { clientId } = await params
+    const { campaignType, events, customUrl }: CreateWebhookRequest = await request.json()
 
     // Vérifier que le client existe
     const client = await prisma.client.findUnique({
@@ -86,9 +87,29 @@ export async function POST(
     // Générer un secret pour sécuriser le webhook
     const secret = crypto.randomBytes(32).toString('hex')
     
-    // URL du webhook (notre endpoint)
-    const baseUrl = process.env.BASE_URL || 'http://localhost:3000'
-    const webhookUrl = `${baseUrl}/api/webhook/emelia`
+    // Déterminer l'URL du webhook
+    let webhookUrl: string
+    let isCustomUrl = false
+    
+    if (customUrl && customUrl.trim()) {
+      // Valider l'URL personnalisée
+      try {
+        new URL(customUrl)
+        webhookUrl = customUrl.trim()
+        isCustomUrl = true
+        console.log(`🎯 Utilisation d'une URL personnalisée: ${webhookUrl}`)
+      } catch {
+        return NextResponse.json(
+          { error: 'Invalid custom URL provided' },
+          { status: 400 }
+        )
+      }
+    } else {
+      // URL du webhook par défaut (notre endpoint)
+      const baseUrl = process.env.BASE_URL || 'http://localhost:3000'
+      webhookUrl = `${baseUrl}/api/webhook/emelia`
+      console.log(`🔗 Utilisation de l'URL par défaut: ${webhookUrl}`)
+    }
 
     // Créer le webhook en base
     const webhook = await prisma.webhook.create({
@@ -102,16 +123,25 @@ export async function POST(
       }
     })
 
-    // TODO: Créer le webhook côté Emelia via leur API
-    // Pour l'instant, on enregistre juste en base
-    console.log(`🔗 Webhook créé pour ${client.name} (${campaignType}): ${webhookUrl}`)
+    // Log de création
+    console.log(`🔗 Webhook créé pour ${client.name} (${campaignType}):`, {
+      url: webhookUrl,
+      isCustom: isCustomUrl,
+      events: events
+    })
+    
+    // TODO: Si URL personnalisée, on n'a pas besoin de créer côté Emelia
+    // Si URL par défaut, il faudrait créer le webhook côté Emelia via leur API
 
     return NextResponse.json({
       webhook: {
         ...webhook,
-        events: JSON.parse(webhook.events)
+        events: JSON.parse(webhook.events),
+        isCustomUrl
       },
-      message: 'Webhook created successfully'
+      message: isCustomUrl 
+        ? 'Webhook personnalisé créé avec succès' 
+        : 'Webhook Emelia créé avec succès'
     })
 
   } catch (error) {
@@ -126,10 +156,10 @@ export async function POST(
 // DELETE - Supprimer tous les webhooks d'un client
 export async function DELETE(
   request: NextRequest,
-  { params }: { params: { clientId: string } }
+  { params }: { params: Promise<{ clientId: string }> }
 ) {
   try {
-    const clientId = params.clientId
+    const { clientId } = await params
 
     // Supprimer tous les webhooks et leurs livraisons
     await prisma.webhook.deleteMany({

@@ -2,6 +2,87 @@ import { prisma } from './db'
 import { EmeliaAPIClient, EmeliaActivity, EmeliaCampaign } from './emelia'
 import { classifyResponse } from './ai-classifier'
 
+export async function syncClientReplies(clientId: string, apiKey: string, code3: string) {
+  const emeliClient = new EmeliaAPIClient(apiKey)
+  
+  try {
+    console.log(`🔄 Starting REPLIES SYNC for client ${clientId} with code ${code3}`)
+    
+    // 1. Get all campaigns for this client
+    const allCampaigns = await emeliClient.getCampaigns()
+    const filteredCampaigns = emeliClient.filterCampaignsByCode(allCampaigns, code3)
+    
+    console.log(`Found ${filteredCampaigns.length} campaigns to sync replies from`)
+    
+    let totalReplies = 0
+    
+    for (const campaign of filteredCampaigns) {
+      const campaignId = emeliClient.getCampaignId(campaign)
+      if (!campaignId) continue
+      
+      // Get stored campaign
+      const storedCampaign = await prisma.campaign.findFirst({
+        where: {
+          clientId,
+          emeliaId: campaignId
+        }
+      })
+      
+      if (!storedCampaign) continue
+      
+      console.log(`🔍 Fetching replies for campaign: ${campaign.name}`)
+      
+      let cursor: string | undefined
+      let campaignReplies = 0
+      
+      // Use pagination to get all activities
+      do {
+        try {
+          const response = await emeliClient.getCampaignActivities(campaignId, cursor)
+          const activities = response.activities || []
+          
+          for (const activity of activities) {
+            // Only process reply activities
+            if (activity.event?.toUpperCase() === 'REPLY' || activity.event?.toUpperCase() === 'REPLIED') {
+              try {
+                // Check if this reply already exists to avoid duplicates
+                const existingMessage = await prisma.message.findFirst({
+                  where: {
+                    messageId: activity.id,
+                    thread: { clientId }
+                  }
+                })
+                
+                if (!existingMessage) {
+                  await processReplyActivity(clientId, storedCampaign.id, activity)
+                  campaignReplies++
+                }
+              } catch (replyError) {
+                console.error(`Error processing reply ${activity.id}:`, replyError)
+              }
+            }
+          }
+          
+          cursor = response.nextCursor
+        } catch (pageError) {
+          console.error(`Error processing activities page for campaign ${campaignId}:`, pageError)
+          break
+        }
+      } while (cursor)
+      
+      console.log(`📧 Found ${campaignReplies} new replies for campaign: ${campaign.name}`)
+      totalReplies += campaignReplies
+    }
+    
+    console.log(`✅ Replies sync completed: ${totalReplies} total replies processed`)
+    return { success: true, totalReplies }
+    
+  } catch (error) {
+    console.error(`❌ Replies sync failed for client ${clientId}:`, error)
+    throw error
+  }
+}
+
 export async function backfillClient(clientId: string, apiKey: string, code3: string) {
   const emeliClient = new EmeliaAPIClient(apiKey)
   
@@ -158,7 +239,8 @@ export async function backfillClient(clientId: string, apiKey: string, code3: st
       
       // Accumulate stats
       totalStats.sent += stats.sent
-      totalStats.delivered += stats.delivered
+      // Calculate actual delivered (delivered - bounces) for proper display
+      totalStats.delivered += Math.max(0, stats.delivered - stats.bounces)
       totalStats.opens += stats.opens
       totalStats.clicks += stats.clicks
       totalStats.replies += stats.replies
@@ -333,7 +415,6 @@ async function processCampaignActivities(
   campaign: EmeliaCampaign, 
   emeliClient: EmeliaAPIClient
 ) {
-  let cursor: string | undefined
   const stats = {
     sent: 0,
     delivered: 0,
@@ -363,17 +444,81 @@ async function processCampaignActivities(
   
   if (!storedCampaign) return stats
   
-  // Get only replies for this campaign to avoid processing unnecessary activities
+  // Try to get activities from the campaign and calculate stats manually
   try {
-    const replies = await emeliClient.getCampaignReplies(campaignId)
+    console.log(`Processing activities for campaign ${campaign.name} (fallback method)`)
+    let cursor: string | undefined
+    let totalProcessed = 0
+    let repliesProcessed = 0
     
-    for (const reply of replies) {
-      await processActivity(clientId, storedCampaign.id, reply, stats)
-    }
+    // Use pagination to get all activities
+    do {
+      try {
+        const response = await emeliClient.getCampaignActivities(campaignId, cursor)
+        const activities = response.activities || []
+        
+        for (const activity of activities) {
+          // Count activities by type for stats
+          switch (activity.event?.toUpperCase()) {
+            case 'SENT':
+              stats.sent++
+              break
+            case 'DELIVERED':
+              stats.delivered++
+              break
+            case 'OPEN':
+            case 'FIRST_OPEN':
+              stats.opens++
+              break
+            case 'CLICK':
+            case 'CLICKED':
+              stats.clicks++
+              break
+            case 'REPLY':
+            case 'REPLIED':
+              stats.replies++
+              // Process the reply message
+              try {
+                await processReplyActivity(clientId, storedCampaign.id, activity)
+                repliesProcessed++
+              } catch (replyError) {
+                console.error(`Error processing reply for ${activity.email}:`, replyError)
+              }
+              break
+            case 'BOUNCE':
+            case 'BOUNCED':
+              stats.bounces++
+              break
+            case 'UNSUBSCRIBE':
+            case 'UNSUBSCRIBED':
+              stats.unsubs++
+              break
+          }
+          totalProcessed++
+        }
+        
+        cursor = response.nextCursor
+      } catch (pageError) {
+        console.error(`Error processing activities page for campaign ${campaignId}:`, pageError)
+        break // Exit the loop on error
+      }
+    } while (cursor)
     
-    console.log(`Processed ${replies.length} replies for campaign ${storedCampaign.name}`)
+    console.log(`Processed ${totalProcessed} activities for campaign ${campaign.name} (${repliesProcessed} replies):`, stats)
   } catch (error) {
-    console.error(`Error processing replies for campaign ${campaignId}:`, error)
+    console.error(`Error processing activities for campaign ${campaignId}:`, error)
+    // Return basic stats based on campaign info if available
+    if (campaign.stats) {
+      return {
+        sent: campaign.stats.sent || 0,
+        delivered: campaign.stats.delivered || campaign.stats.sent || 0,
+        opens: campaign.stats.opens || 0,
+        clicks: campaign.stats.clicks || 0,
+        replies: campaign.stats.replies || 0,
+        bounces: campaign.stats.bounces || 0,
+        unsubs: campaign.stats.unsubscribes || 0,
+      }
+    }
   }
   
   return stats

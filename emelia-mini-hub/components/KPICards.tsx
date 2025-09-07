@@ -33,6 +33,7 @@ export function KPICards({ kpis }: KPICardsProps) {
     )
   }
 
+  // Delivered emails are now already correctly calculated (excluding bounces) in the sync process
   const openRate = kpis.delivered > 0 ? (kpis.opens / kpis.delivered * 100) : 0
   const clickRate = kpis.delivered > 0 ? (kpis.clicks / kpis.delivered * 100) : 0
   const replyRate = kpis.delivered > 0 ? (kpis.replies / kpis.delivered * 100) : 0

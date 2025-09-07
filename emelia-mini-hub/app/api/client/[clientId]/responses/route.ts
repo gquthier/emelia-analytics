@@ -50,6 +50,47 @@ export async function GET(request: NextRequest, context: RouteContext) {
 
       const prospectCompany = contact.custom?.organizationname || null
 
+      // Parse structured content if available
+      let parsedContent = message.text
+      let emeliaSender = null
+      let emeliaMsgId = null
+      let emeliaMsgDate = null
+      
+      // Check if message has structured format from Emelia webhook
+      if (message.text.includes('📩 Réponse de')) {
+        const lines = message.text.split('\n')
+        
+        // Extract clean content (remove Emelia formatting)
+        const contentStart = lines.findIndex(line => line.includes('💬 Contenu de la réponse:'))
+        if (contentStart !== -1) {
+          const contentEnd = lines.findIndex((line, index) => 
+            index > contentStart && line.includes('📧 Expéditeur:')
+          )
+          
+          if (contentEnd !== -1) {
+            // Extract the actual message content between quotes
+            const contentLines = lines.slice(contentStart + 1, contentEnd)
+            parsedContent = contentLines.join('\n').replace(/^"(.*)"$/, '$1').trim()
+          }
+        }
+        
+        // Extract Emelia metadata
+        const senderLine = lines.find(line => line.includes('📧 Expéditeur:'))
+        if (senderLine) {
+          emeliaSender = senderLine.replace('📧 Expéditeur: ', '').trim()
+        }
+        
+        const msgIdLine = lines.find(line => line.includes('🔗 Message ID:'))
+        if (msgIdLine) {
+          emeliaMsgId = msgIdLine.replace('🔗 Message ID: ', '').trim()
+        }
+        
+        const dateLine = lines.find(line => line.includes('Date:'))
+        if (dateLine) {
+          emeliaMsgDate = dateLine.replace('Date: ', '').trim()
+        }
+      }
+
       return {
         id: message.id,
         threadId: message.thread.id,
@@ -58,12 +99,21 @@ export async function GET(request: NextRequest, context: RouteContext) {
         prospectName,
         prospectCompany,
         subject: message.thread.subject,
-        content: message.text,
+        content: parsedContent,
+        rawContent: message.text, // Keep original for debugging
         receivedAt: message.at,
         campaignName: message.thread.campaign.name,
         label: message.thread.label,
         confidence: message.thread.confidence,
-        isRead: false // TODO: Add read status to database schema
+        isRead: false, // TODO: Add read status to database schema
+        // Emelia metadata
+        emelia: {
+          sender: emeliaSender,
+          messageId: emeliaMsgId,
+          originalDate: emeliaMsgDate,
+          status: 'REPLIED', // Default status from Emelia
+          source: 'EMELIA_WEBHOOK'
+        }
       }
     })
 

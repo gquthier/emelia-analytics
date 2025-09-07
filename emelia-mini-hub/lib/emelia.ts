@@ -481,36 +481,29 @@ class EmeliaAPIClient {
       if (data.global) {
         return {
           sent: data.global.sent || 0,
-          delivered: data.global.sent || 0, // Use sent as delivered approximation
-          opens: data.global.first_open || 0,
-          clicks: data.global.unique_clicked || 0,
-          replies: data.global.replied || 0,
-          bounces: data.global.bounced || 0,
-          unsubscribes: data.global.unsubscribed || 0,
+          delivered: data.global.delivered || data.global.sent || 0, // Try delivered first, fallback to sent
+          opens: data.global.first_open || data.global.opens || 0,
+          clicks: data.global.unique_clicked || data.global.clicks || data.global.clicked || 0,
+          replies: data.global.replied || data.global.replies || 0,
+          bounces: data.global.bounced || data.global.bounces || 0,
+          unsubscribes: data.global.unsubscribed || data.global.unsubscribes || 0,
         };
       }
       
-      // Fallback to simple response format
+      // Fallback to simple response format with better field mapping
       return {
-        sent: data.mailsSent || data.sent || 0,
-        delivered: data.mailsSent || data.sent || 0,
-        opens: data.opens || 0,
-        clicks: data.linkClicked || data.clicked || 0,
-        replies: data.replied || 0,
-        bounces: data.bounced || 0,
-        unsubscribes: data.unsubscribed || 0,
+        sent: data.mailsSent || data.sent || data.total_sent || 0,
+        delivered: data.delivered || data.mailsSent || data.sent || data.total_sent || 0,
+        opens: data.opens || data.first_open || data.unique_opens || 0,
+        clicks: data.linkClicked || data.clicked || data.unique_clicked || data.clicks || 0,
+        replies: data.replied || data.replies || 0,
+        bounces: data.bounced || data.bounces || 0,
+        unsubscribes: data.unsubscribed || data.unsubscribes || 0,
       };
     } catch (error) {
       console.error(`Failed to get stats for campaign ${campaignId}:`, error);
-      return {
-        sent: 0,
-        delivered: 0,
-        opens: 0,
-        clicks: 0,
-        replies: 0,
-        bounces: 0,
-        unsubscribes: 0,
-      };
+      // Instead of returning zeros, throw the error to trigger fallback processing
+      throw error;
     }
   }
 
