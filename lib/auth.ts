@@ -57,7 +57,8 @@ export function validateAdminCode(accessCode: string): boolean {
 
 export function createShareLink(clientId: string, expiresIn?: string): string {
   const token = signJWT({ type: 'viewer', clientId }, expiresIn || '30d');
-  return `${process.env.BASE_URL}/c/${clientId}?token=${token}`;
+  const baseUrl = process.env.NEXT_PUBLIC_BASE_URL || process.env.BASE_URL;
+  return `${baseUrl}/c/${clientId}?token=${token}`;
 }
 
 export function verifyShareToken(token: string, clientId: string): boolean {

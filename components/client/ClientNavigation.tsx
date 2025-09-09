@@ -74,11 +74,11 @@ export function ClientNavigation({ clientId, activeTab, isViewerMode }: ClientNa
             href={href}
             className={`group relative flex items-center gap-3 px-6 py-4 text-sm font-medium transition-colors ${
               isActive
-                ? 'text-accent border-b-2 border-accent bg-accent-muted/10'
-                : 'text-brand-muted hover:text-brand border-b-2 border-transparent hover:border-brand-border'
+                ? 'text-blue-600 border-b-2 border-blue-600 bg-blue-50'
+                : 'text-gray-600 hover:text-gray-900 border-b-2 border-transparent hover:border-gray-300'
             }`}
           >
-            <Icon className={`w-4 h-4 ${isActive ? 'text-accent' : 'text-brand-muted group-hover:text-brand'}`} />
+            <Icon className={`w-4 h-4 ${isActive ? 'text-blue-600' : 'text-gray-600 group-hover:text-gray-900'}`} />
             
             <div className="flex items-center gap-2">
               <span className={isActive ? 'caps' : ''}>{tab.label}</span>

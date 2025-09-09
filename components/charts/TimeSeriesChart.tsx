@@ -94,55 +94,9 @@ export function TimeSeriesChart({ clientId }: TimeSeriesChartProps) {
   return (
     <Card>
       <CardHeader>
-        <div className="flex items-center justify-between">
-          <CardTitle>Volume d'envoi et réponses par jour</CardTitle>
-          <div className="flex items-center gap-2">
-            <Calendar className="h-4 w-4" />
-            <div className="flex gap-2">
-              <Button 
-                variant={dateRange.days === 7 ? "default" : "outline"} 
-                size="sm"
-                onClick={() => {
-                  setDateRange({ days: 7 })
-                  setStartDate(subDays(new Date(), 7))
-                  setEndDate(new Date())
-                }}
-              >
-                7j
-              </Button>
-              <Button 
-                variant={dateRange.days === 30 ? "default" : "outline"} 
-                size="sm"
-                onClick={() => {
-                  setDateRange({ days: 30 })
-                  setStartDate(subDays(new Date(), 30))
-                  setEndDate(new Date())
-                }}
-              >
-                30j
-              </Button>
-              <Button 
-                variant={dateRange.days === 90 ? "default" : "outline"} 
-                size="sm"
-                onClick={() => {
-                  setDateRange({ days: 90 })
-                  setStartDate(subDays(new Date(), 90))
-                  setEndDate(new Date())
-                }}
-              >
-                90j
-              </Button>
-            </div>
-          </div>
-        </div>
+        <CardTitle>Volume d'envoi et réponses par jour</CardTitle>
       </CardHeader>
       <CardContent>
-        <div className="mb-4">
-          <div className="flex items-center gap-4 text-sm text-gray-600">
-            <span>Période: {format(startDate, 'dd MMM yyyy', { locale: fr })} - {format(endDate, 'dd MMM yyyy', { locale: fr })}</span>
-            <span>({filteredData.length} jour{filteredData.length > 1 ? 's' : ''})</span>
-          </div>
-        </div>
         <div className="h-80">
           <ResponsiveContainer width="100%" height="100%">
             <ComposedChart data={filteredData} margin={{ top: 20, right: 50, left: 20, bottom: 5 }}>

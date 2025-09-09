@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { prisma } from '@/lib/db'
+import { supabaseClients } from '@/lib/supabase-adapter'
 import { createShareLink } from '@/lib/auth'
 
 interface RouteContext {
@@ -11,7 +11,7 @@ export async function POST(request: NextRequest, context: RouteContext) {
     const { clientId } = await context.params
 
     // Verify client exists
-    const client = await prisma.client.findUnique({
+    const client = await supabaseClients.findUnique({
       where: { id: clientId }
     })
 
@@ -23,14 +23,9 @@ export async function POST(request: NextRequest, context: RouteContext) {
     const shareLink = createShareLink(clientId)
     const token = shareLink.split('token=')[1]
 
-    // Store in database
-    await prisma.shareLink.create({
-      data: {
-        clientId,
-        token,
-      }
-    })
-
+    // For now, just return the share link without storing in database
+    // TODO: Implement share link storage in Supabase if needed
+    
     return NextResponse.json({ shareLink })
   } catch (error) {
     console.error('Share link creation error:', error)
