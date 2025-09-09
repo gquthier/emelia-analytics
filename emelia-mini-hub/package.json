@@ -1,18 +1,13 @@
 {
   "name": "emelia-mini-hub",
-  "version": "1.0.0",
-  "description": "Application web ultra-simple pour agences gérant leurs campagnes Emelia clients",
+  "version": "0.1.0",
   "private": true,
-  "repository": {
-    "type": "git",
-    "url": "https://github.com/gquthier/emelia-analytics"
-  },
-  "homepage": "https://emelia-saas-v2.vercel.app",
   "scripts": {
     "dev": "next dev --turbopack",
-    "build": "next build --turbopack",
+    "build": "prisma generate && next build --turbopack",
     "start": "next start",
     "lint": "eslint",
+    "postinstall": "prisma generate",
     "ngrok:start": "./start-ngrok-test.sh",
     "ngrok:stop": "./stop-ngrok-test.sh",
     "webhook:test": "curl -X POST \"$(grep BASE_URL .env | cut -d'\"' -f2)/api/webhook/emelia\" -H \"Content-Type: application/json\" -d @test-payload.json",

@@ -4,14 +4,6 @@
 
 Cette refonte complète transforme l'Emelia Mini-Hub en suivant les guidelines de design **SaaS Expand** avec une approche moderne, accessible et centrée utilisateur.
 
-## ✅ Mises à jour récentes (Décembre 2025)
-
-### 🎯 **Améliorations UX implémentées**
-- **Navigation améliorée** : Onglets actifs en bleu pour meilleure visibilité
-- **Page CRM temporaire** : Overlay "Coming Soon" avec contenu flouté 
-- **Interface épurée** : Suppression des filtres de date non fonctionnels
-- **Liens de partage** : Configuration automatique du domaine production
-
 ## ✅ Fonctionnalités implémentées
 
 ### 🎨 **Design System & Tokens**

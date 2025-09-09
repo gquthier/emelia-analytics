@@ -1,14 +1,12 @@
-# 🚀 MIGRATION SUPABASE - TERMINÉE ✅
+# 🚀 GUIDE DE MIGRATION VERS SUPABASE
 
-## 📋 État de la migration (Décembre 2025)
+## 📋 État actuel de la préparation
 
-✅ **Migration complète terminée :**
-- ✅ **Base de données** : Supabase PostgreSQL opérationnel
-- ✅ **Adaptateur Supabase** : `lib/supabase-adapter.ts` déployé
-- ✅ **Routes API** : Migration vers l'adaptateur Supabase
-- ✅ **Production** : Application fonctionnelle sur https://emelia-saas-v2.vercel.app
-- ✅ **Variables d'environnement** : Configuration production complète
-- ✅ **Tests** : Connexion et opérations validées
+✅ **Configuration terminée :**
+- Schema Prisma mis à jour pour PostgreSQL
+- Variables d'environnement Supabase configurées
+- Script de migration SQLite → PostgreSQL créé
+- Tests de connexion préparés
 
 ✅ **Données existantes à migrer :**
 - 4 clients

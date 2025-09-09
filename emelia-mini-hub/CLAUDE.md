@@ -4,17 +4,15 @@
 
 **Emelia Mini-Hub** est une application web Next.js 15 ultra-simple pour agences gérant leurs campagnes Emelia clients. L'application centralise la gestion des campagnes email, analyse les réponses avec IA, et fournit des tableaux de bord clients avec KPIs détaillés.
 
-🌐 **Application en production**: [https://emelia-saas-v2.vercel.app](https://emelia-saas-v2.vercel.app)
-
 ## 🏗️ Architecture Technique
 
 ### Stack Technologique
 - **Frontend**: Next.js 15 (App Router) + React 19 + TypeScript
 - **Styling**: Tailwind CSS 4 + shadcn/ui + Radix UI
-- **Base de données**: Supabase PostgreSQL (prod) / Prisma ORM (legacy)
+- **Base de données**: Prisma ORM + SQLite (dev) / PostgreSQL (prod)
 - **Graphiques**: Recharts pour les visualisations temporelles
 - **Sécurité**: Chiffrement AES-256-GCM + JWT
-- **Déploiement**: Vercel avec CRON automatique + GitHub integration
+- **Déploiement**: Vercel avec CRON automatique
 
 ### Structure des Dossiers
 ```
@@ -347,20 +345,11 @@ export function verifyShareToken(token: string, clientId: string): boolean
 
 ### **Variables d'environnement requises**
 ```bash
-# Database (Supabase)
-DATABASE_URL="postgresql://postgres.xxx:password@aws-0-eu-central-1.pooler.supabase.com:5432/postgres"
-SUPABASE_URL="https://xxx.supabase.co"
-SUPABASE_ANON_KEY="eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9..."
-
-# Security
+DATABASE_URL="file:./dev.db"                    # SQLite dev / PostgreSQL prod
 AES_KEY="32-bytes-hex-key"                      # Clé de chiffrement
 JWT_SIGNING_KEY="jwt-secret-key"                # Signature JWT
 CRON_SECRET="cron-secret-key"                   # Protection CRON
-ADMIN_ACCESS_CODE="ADMIN2025"                   # Code d'accès admin
-
-# URLs
-BASE_URL="https://emelia-saas-v2.vercel.app"    # URL de base (production)
-NEXT_PUBLIC_BASE_URL="https://emelia-saas-v2.vercel.app"  # URL publique pour les liens de partage
+BASE_URL="http://localhost:3000"                # URL de base
 ```
 
 ### **Configuration Vercel**
@@ -371,60 +360,32 @@ NEXT_PUBLIC_BASE_URL="https://emelia-saas-v2.vercel.app"  # URL publique pour le
       "path": "/api/cron/sync",
       "schedule": "0 0 */2 * *"
     }
-  ],
-  "buildCommand": "npm run build",
-  "outputDirectory": ".next",
-  "installCommand": "npm install"
+  ]
 }
 ```
 
 ### **Scripts disponibles**
 ```bash
 npm run dev      # Développement avec Turbopack
-npm run build    # Build de production (sans Prisma generate)
+npm run build    # Build de production
 npm run start    # Démarrage production
 npm run lint     # Vérification ESLint
-
-# Scripts de migration Supabase
-npm run test:supabase          # Test connexion Supabase
-npm run migrate:supabase       # Migration des données vers Supabase
-npm run migrate:api           # Migration via API Supabase
 ```
 
 ## 🔍 Points d'attention et limitations
 
-### **Migration Supabase (2025)**
-✅ **Base de données**: Migration complète vers Supabase PostgreSQL
-- Nouvel adaptateur Supabase (`lib/supabase-adapter.ts`)
-- Remplacement progressif des appels Prisma
-- REST API Supabase pour toutes les opérations
-
-✅ **Déploiement production**:
-- GitHub repository: `https://github.com/gquthier/emelia-analytics`
-- Auto-deployment via GitHub integration
-- Variables d'environnement production configurées
-
-### **Fonctionnalités récentes (Décembre 2025)**
-✅ **UI/UX améliorée**:
-- Navigation avec onglets actifs visibles (couleur bleue)
-- Page CRM avec overlay "Coming Soon" et contenu flouté
-- Suppression des filtres de date non fonctionnels
-
-✅ **Génération de liens de partage corrigée**:
-- Configuration automatique du domaine production
-- Variable `NEXT_PUBLIC_BASE_URL` pour les liens clients
-
-### **Architecture mise à jour**
-- **Build sans Prisma**: Scripts de build simplifiés 
-- **Adaptateur hybride**: Supabase API + fallback Prisma legacy
-- **Configuration Vercel**: Build et variables optimisées
+### **Limitations actuelles**
+- **Base de données**: SQLite en dev (pas de Supabase configuré)
+- **Classification IA**: Heuristique uniquement (pas d'OpenAI)
+- **Authentification**: Session simple (pas de NextAuth configuré)
+- **Rate limiting**: Basique (pas de Redis)
 
 ### **Améliorations possibles**
-- **Classification IA**: OpenAI pour améliorer la précision
-- **Tests**: Jest, Testing Library, Cypress
-- **Monitoring**: Sentry, LogRocket
+- **Supabase**: Migration PostgreSQL avec authentification
+- **OpenAI**: Intégration réelle pour la classification
 - **Cache**: Redis pour les performances
-- **Migration complète**: Finaliser la suppression de Prisma
+- **Monitoring**: Sentry, LogRocket
+- **Tests**: Jest, Testing Library
 
 ### **Conventions de nommage Emelia**
 - **Règle**: Le `code3` doit être présent dans le nom de la campagne
@@ -445,30 +406,6 @@ npm run migrate:api           # Migration via API Supabase
 - **Index** sur les clés étrangères
 - **Lazy loading** des composants
 
-## 🆕 Adaptateur Supabase
-
-### **lib/supabase-adapter.ts** - Nouveau client de base de données
-```typescript
-// Client principal Supabase
-export const supabaseClients = {
-  async findMany(options: { orderBy?: any, include?: any }): Promise<Client[]>
-  async findUnique(options: { where: { id: string }, include?: any }): Promise<Client | null>
-  async create(data: { data: ClientData }): Promise<Client>
-  async update(options: { where: { id: string }, data: any }): Promise<Client>
-}
-
-// Fonctions utilitaires
-async function supabaseRequest(method: string, path: string, data?: unknown)
-async function getClientWithThreadsAndMessages(clientId: string): Promise<Client | null>
-```
-
-### **Migration progressive**
-- ✅ Routes principales migrées vers Supabase
-- ✅ Génération de liens de partage via adaptateur
-- 🔄 Routes API en cours de migration
-- 📝 Prisma conservé temporairement pour compatibilité
-
 ---
 
-*Ce document a été mis à jour automatiquement suite aux dernières modifications du projet Emelia Mini-Hub.*
-*Dernière mise à jour : Décembre 2025 - Migration Supabase et déploiement production*
+*Ce document a été généré automatiquement en analysant la structure complète du code du projet Emelia Mini-Hub. Dernière mise à jour : $(date)*

@@ -2,8 +2,6 @@
 
 Application web ultra-simple pour agences gérant leurs campagnes Emelia clients.
 
-🌐 **Application en production**: [https://emelia-saas-v2.vercel.app](https://emelia-saas-v2.vercel.app)
-
 ## Fonctionnalités
 
 ### 🏠 Accueil Agence (/)
@@ -14,17 +12,11 @@ Application web ultra-simple pour agences gérant leurs campagnes Emelia clients
 
 ### 📊 Dashboard Client (/c/[clientId])
 - **KPIs complets** : Envoyés, Délivrés, Taux d'ouverture, Clics, Réponses, Intéressés, Bounces, Désabonnements
-- **Graphique temporel** : Évolution des événements (interface épurée)
-- **Navigation améliorée** : Onglets actifs visibles avec indicateurs colorés
+- **Graphique temporel** : Évolution des événements sur 30 jours
+- **Table des réponses** avec filtre et recherche
 - **Classification IA** des réponses (Intéressé, À rappeler, Neutre, etc.)
 - **Panneaux de threads** pour voir l'historique complet des conversations
 - **Mode lecture seule** via liens partagés
-
-#### 🆕 Nouvelles fonctionnalités (Décembre 2025)
-- **Interface améliorée** : Navigation avec onglets actifs en bleu
-- **Page CRM** : Temporairement désactivée avec overlay "Coming Soon"
-- **Liens de partage** : Génération automatique avec le bon domaine production
-- **Page Réponses** : Interface unifiée pour les conversations clients
 
 ### 🔄 Synchronisation
 - **Backfill immédiat** à l'ajout d'un client
@@ -39,49 +31,40 @@ Application web ultra-simple pour agences gérant leurs campagnes Emelia clients
 
 ## Stack Technique
 
-- **Next.js 15** (App Router) + React 19 + TypeScript
-- **Tailwind CSS 4** + shadcn/ui + Radix UI
+- **Next.js 14** (App Router) + TypeScript
+- **Tailwind CSS** + shadcn/ui
 - **Recharts** pour les graphiques
-- **Supabase PostgreSQL** (production) + Prisma ORM (legacy)
+- **Prisma** (SQLite dev / PostgreSQL prod)
 - **Chiffrement AES-GCM** pour les secrets
 - **JWT** pour l'authentification
-- **Déploiement Vercel** avec intégration GitHub automatique
 
 ## Installation
 
 ### 1. Cloner et installer les dépendances
 
 ```bash
-git clone https://github.com/gquthier/emelia-analytics
-cd emelia-analytics
+git clone <repository>
+cd emelia-mini-hub
 npm install
 ```
 
 ### 2. Configuration des variables d'environnement
 
-Configurez les variables suivantes dans votre `.env` :
+Copiez `.env.example` vers `.env` et configurez :
 
 ```bash
-# Base de données Supabase (production)
-DATABASE_URL="postgresql://postgres.xxx:password@aws-0-eu-central-1.pooler.supabase.com:5432/postgres"
-SUPABASE_URL="https://xxx.supabase.co"
-SUPABASE_ANON_KEY="eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9..."
-
-# Sécurité
+DATABASE_URL="file:./dev.db"
 AES_KEY="9cc1eac624537bb555efe22d6c74ffc9576c92711dfd3c54e18e108eac46d3f8"
 JWT_SIGNING_KEY="super-secret-jwt-key-change-in-production-123456789"
 CRON_SECRET="super-secret-cron-key-change-in-production-987654321"
-ADMIN_ACCESS_CODE="ADMIN2025"
-
-# URLs
-BASE_URL="https://emelia-saas-v2.vercel.app"  # Production
-NEXT_PUBLIC_BASE_URL="https://emelia-saas-v2.vercel.app"  # Pour les liens de partage
+BASE_URL="http://localhost:3000"
 ```
 
-### 3. Tester la connexion Supabase
+### 3. Initialiser la base de données
 
 ```bash
-npm run test:supabase
+npx prisma generate
+npx prisma db push
 ```
 
 ### 4. Démarrer l'application
@@ -91,8 +74,6 @@ npm run dev
 ```
 
 L'application sera disponible sur http://localhost:3000
-
-> **Note**: La base de données Supabase doit être configurée et accessible. L'application utilise l'adaptateur Supabase pour toutes les opérations de base de données.
 
 ## Utilisation
 
@@ -129,22 +110,17 @@ L'IA classifie automatiquement les réponses en :
 
 ## Déploiement
 
-### Vercel (Recommandé - Configuration actuelle)
+### Vercel (Recommandé)
 
-L'application est déployée automatiquement via GitHub :
-
-1. **Repository GitHub** : https://github.com/gquthier/emelia-analytics
-2. **Déploiement automatique** : Push vers `main` déclenche un redéploiement
-3. **Variables d'environnement** : Configurées dans le dashboard Vercel
-4. **CRON automatique** : Configuré via `vercel.json` pour la synchronisation
-
-> **Production actuelle** : [https://emelia-saas-v2.vercel.app](https://emelia-saas-v2.vercel.app)
+1. Connectez votre repository GitHub
+2. Configurez les variables d'environnement
+3. Le CRON est configuré automatiquement via `vercel.json`
 
 ### Autre plateforme
 
 1. Buildez l'application : `npm run build`  
-2. Configurez une instance Supabase PostgreSQL
-3. Mettez à jour les variables `SUPABASE_*`
+2. Configurez une base PostgreSQL
+3. Mettez à jour `DATABASE_URL`
 4. Configurez un CRON externe pour `/api/cron/sync`
 
 ## API Interne
@@ -195,25 +171,6 @@ node -e "console.log(require('crypto').randomBytes(64).toString('base64'))"
 - La classification IA a un fallback heuristique
 - Mode dégradé si l'API Emelia est indisponible temporairement
 
-## 🔄 Migration Supabase (2025)
-
-### Nouvel adaptateur de base de données
-
-L'application utilise maintenant un adaptateur Supabase (`lib/supabase-adapter.ts`) qui :
-- Remplace progressivement les appels Prisma directs
-- Utilise l'API REST Supabase pour toutes les opérations
-- Maintient la compatibilité avec l'interface Prisma existante
-
-### Scripts de migration disponibles
-
-```bash
-npm run test:supabase          # Tester la connexion
-npm run migrate:supabase       # Migrer les données (si besoin)
-npm run migrate:api           # Migration via API REST
-```
-
 ---
 
 **Développé pour une utilisation interne agence. Minimaliste et efficace.** 🚀
-
-*Dernière mise à jour : Décembre 2025 - Migration Supabase et optimisations UI/UX*
