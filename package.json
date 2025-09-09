@@ -4,10 +4,9 @@
   "private": true,
   "scripts": {
     "dev": "next dev --turbopack",
-    "build": "prisma generate && next build --turbopack",
+    "build": "next build --turbopack",
     "start": "next start",
     "lint": "eslint",
-    "postinstall": "prisma generate",
     "ngrok:start": "./start-ngrok-test.sh",
     "ngrok:stop": "./stop-ngrok-test.sh",
     "webhook:test": "curl -X POST \"$(grep BASE_URL .env | cut -d'\"' -f2)/api/webhook/emelia\" -H \"Content-Type: application/json\" -d @test-payload.json",
