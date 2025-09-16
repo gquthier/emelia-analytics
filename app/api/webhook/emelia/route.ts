@@ -1,9 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { PrismaClient } from '@prisma/client'
+import { prisma } from '@/lib/db'
 import crypto from 'crypto'
 import { classifyResponse } from '@/lib/ai-classifier'
-
-const prisma = new PrismaClient()
 
 // Fonction pour envoyer vers Make
 async function sendToMake(client: any, payload: EmeliaWebhookPayload, thread: any) {

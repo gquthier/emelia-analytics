@@ -1,8 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { PrismaClient } from '@prisma/client'
+import { prisma } from '@/lib/db'
 import crypto from 'crypto'
-
-const prisma = new PrismaClient()
 
 interface CreateWebhookRequest {
   campaignType: 'email' | 'advanced' | 'linkedin'
