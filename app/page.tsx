@@ -1,37 +1,64 @@
-export default function Home() {
-  return (
-    <div className="min-h-screen bg-white p-8">
-      <div className="max-w-4xl mx-auto">
-        <h1 className="text-4xl font-bold text-black mb-6">🚀 Emelia Mini-Hub</h1>
-        <p className="text-gray-600 mb-8 text-lg">Votre gestionnaire de campagnes Emelia est en ligne !</p>
-        
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-          <div className="bg-green-100 p-6 rounded-lg">
-            <h2 className="font-bold text-green-800 text-xl mb-3">✅ Application déployée</h2>
-            <ul className="list-disc ml-6 text-green-700 space-y-1">
-              <li>Next.js fonctionne correctement</li>
-              <li>8 variables d'environnement configurées</li>
-              <li>Base de données Supabase connectée</li>
-              <li>CRON jobs automatiques activés</li>
-            </ul>
-          </div>
+import { ClientForm } from '@/components/ClientForm'
+import { ClientList } from '@/components/ClientList'
+import { GlobalSyncButton } from '@/components/GlobalSyncButton'
+import { AdminLogin } from '@/components/AdminLogin'
+// import { AdminLogout } from '@/components/AdminLogout'
+import { getAdminSession } from '@/lib/auth'
+// Utilisation temporaire de l'adaptateur Supabase au lieu de Prisma direct
+import { supabaseClients, testSupabaseConnection } from '@/lib/supabase-adapter'
+import Link from 'next/link'
+import { Settings } from 'lucide-react'
 
-          <div className="bg-blue-100 p-6 rounded-lg">
-            <h2 className="font-bold text-blue-800 text-xl mb-3">🔧 Configuration</h2>
-            <div className="text-blue-700 space-y-1">
-              <p><strong>URL :</strong> analytics.saasexpand.io</p>
-              <p><strong>Code admin :</strong> ADMIN9159</p>
-              <p><strong>Statut :</strong> En ligne</p>
+export default async function Home() {
+  // Vérifier l'authentification admin
+  const adminSession = await getAdminSession()
+
+  if (!adminSession) {
+    // Si pas connecté, afficher la page de connexion
+    return <AdminLogin />
+  }
+
+  // Si connecté, afficher le dashboard admin
+  // Test de connexion Supabase au premier chargement
+  await testSupabaseConnection();
+
+  // Utilisation temporaire de l'adaptateur Supabase
+  const clients = await supabaseClients.findMany({
+    orderBy: { createdAt: 'desc' }
+  })
+
+  return (
+    <div className="min-h-screen bg-white">
+      <div className="max-w-6xl mx-auto px-4 py-8">
+        <header className="mb-8">
+          <div className="flex justify-between items-start">
+            <div>
+              <h1 className="text-3xl font-bold text-black mb-2">Emelia Mini-Hub</h1>
+              <p className="text-gray-600">Gérez vos clients et leurs campagnes Emelia</p>
+            </div>
+            <div className="flex items-center gap-4">
+              <GlobalSyncButton />
+              <Link
+                href="/settings"
+                className="inline-flex items-center gap-2 px-4 py-2 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-md hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-violet-600"
+              >
+                <Settings className="w-4 h-4" />
+                Paramètres
+              </Link>
+              <div className="text-sm text-gray-600">
+                Admin connecté
+              </div>
             </div>
           </div>
-        </div>
+        </header>
 
-        <div className="mt-8 bg-yellow-50 border border-yellow-200 p-6 rounded-lg">
-          <h2 className="font-bold text-yellow-800 text-xl mb-3">⚠️ Configuration en cours</h2>
-          <p className="text-yellow-700">
-            L'application affiche actuellement cette page de diagnostic. 
-            Une fois tous les tests terminés, la page de connexion admin sera restaurée.
-          </p>
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
+          <div>
+            <ClientForm />
+          </div>
+          <div>
+            <ClientList clients={clients} />
+          </div>
         </div>
       </div>
     </div>
