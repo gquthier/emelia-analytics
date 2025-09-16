@@ -1,4 +1,4 @@
-import { prisma } from './db'
+import { supabaseCampaigns, supabaseMessages, supabaseClients, supabaseThreads, supabaseClientKpis } from './supabase-adapter'
 import { EmeliaAPIClient, EmeliaActivity, EmeliaCampaign } from './emelia'
 import { classifyResponse } from './ai-classifier'
 
@@ -21,7 +21,7 @@ export async function syncClientReplies(clientId: string, apiKey: string, code3:
       if (!campaignId) continue
       
       // Get stored campaign
-      const storedCampaign = await prisma.campaign.findFirst({
+      const storedCampaign = await supabaseCampaigns.findFirst({
         where: {
           clientId,
           emeliaId: campaignId
@@ -46,7 +46,7 @@ export async function syncClientReplies(clientId: string, apiKey: string, code3:
             if (activity.event?.toUpperCase() === 'REPLY' || activity.event?.toUpperCase() === 'REPLIED') {
               try {
                 // Check if this reply already exists to avoid duplicates
-                const existingMessage = await prisma.message.findFirst({
+                const existingMessage = await supabaseMessages.findFirst({
                   where: {
                     messageId: activity.id,
                     thread: { clientId }
@@ -107,7 +107,7 @@ export async function backfillClient(clientId: string, apiKey: string, code3: st
       }
 
       // Check if campaign already exists
-      const existingCampaign = await prisma.campaign.findFirst({
+      const existingCampaign = await supabaseCampaigns.findFirst({
         where: {
           clientId: clientId,
           emeliaId: campaignId
@@ -116,7 +116,7 @@ export async function backfillClient(clientId: string, apiKey: string, code3: st
 
       if (existingCampaign) {
         // Update existing campaign
-        await prisma.campaign.update({
+        await supabaseCampaigns.update({
           where: { id: existingCampaign.id },
           data: {
             name: campaign.name,
@@ -126,7 +126,7 @@ export async function backfillClient(clientId: string, apiKey: string, code3: st
         console.log(`📝 Updated existing campaign: ${campaign.name}`)
       } else {
         // Create new campaign
-        await prisma.campaign.create({
+        await supabaseCampaigns.create({
           data: {
             clientId,
             emeliaId: campaignId,
@@ -148,7 +148,7 @@ export async function backfillClient(clientId: string, apiKey: string, code3: st
       console.log(`Processing ${replies.length} historical replies for campaign: ${campaignName}`)
       
       // Get the stored campaign from DB
-      const storedCampaign = await prisma.campaign.findFirst({
+      const storedCampaign = await supabaseCampaigns.findFirst({
         where: {
           clientId,
           emeliaId: campaignId
@@ -171,7 +171,7 @@ export async function backfillClient(clientId: string, apiKey: string, code3: st
       }
       
       // Update campaign lastEventAt
-      await prisma.campaign.update({
+      await supabaseCampaigns.update({
         where: { id: storedCampaign.id },
         data: { lastEventAt: new Date() }
       })
@@ -249,7 +249,7 @@ export async function backfillClient(clientId: string, apiKey: string, code3: st
     }
     
     // 4. Count interested threads
-    const interestedCount = await prisma.thread.count({
+    const interestedCount = await supabaseThreads.count({
       where: {
         clientId,
         label: 'INTERESSE'
@@ -257,7 +257,7 @@ export async function backfillClient(clientId: string, apiKey: string, code3: st
     })
     
     // 5. Update client KPIs
-    await prisma.clientKpis.upsert({
+    await supabaseClientKpis.upsert({
       where: { clientId },
       update: {
         ...totalStats,
@@ -272,7 +272,7 @@ export async function backfillClient(clientId: string, apiKey: string, code3: st
     })
     
     // 6. Update client lastSyncAt
-    await prisma.client.update({
+    await supabaseClients.update({
       where: { id: clientId },
       data: { lastSyncAt: new Date() }
     })
@@ -285,7 +285,7 @@ export async function backfillClient(clientId: string, apiKey: string, code3: st
 }
 
 export async function resyncClient(clientId: string, apiKey: string, code3: string) {
-  const client = await prisma.client.findUnique({
+  const client = await supabaseClients.findUnique({
     where: { id: clientId }
   })
   
@@ -316,7 +316,7 @@ export async function fullHistoricalSync(clientId: string, apiKey: string, code3
       const campaignId = emeliClient.getCampaignId(campaign)
       if (!campaignId) continue
 
-      await prisma.campaign.upsert({
+      await supabaseCampaigns.upsert({
         where: {
           clientId_emeliaId: {
             clientId: clientId,
@@ -345,7 +345,7 @@ export async function fullHistoricalSync(clientId: string, apiKey: string, code3
     for (const { campaignId, campaignName, replies } of historicalData) {
       console.log(`🔍 Processing ${replies.length} historical replies for: ${campaignName}`)
       
-      const storedCampaign = await prisma.campaign.findFirst({
+      const storedCampaign = await supabaseCampaigns.findFirst({
         where: {
           clientId,
           emeliaId: campaignId
@@ -360,7 +360,7 @@ export async function fullHistoricalSync(clientId: string, apiKey: string, code3
       for (const reply of replies) {
         try {
           // Check if this reply already exists
-          const existingMessage = await prisma.message.findFirst({
+          const existingMessage = await supabaseMessages.findFirst({
             where: {
               messageId: reply._id,
               thread: { clientId }
@@ -379,14 +379,14 @@ export async function fullHistoricalSync(clientId: string, apiKey: string, code3
       }
       
       // Update campaign timestamp
-      await prisma.campaign.update({
+      await supabaseCampaigns.update({
         where: { id: storedCampaign.id },
         data: { lastEventAt: new Date() }
       })
     }
     
     // 4. Update client sync timestamp
-    await prisma.client.update({
+    await supabaseClients.update({
       where: { id: clientId },
       data: { lastSyncAt: new Date() }
     })
@@ -435,7 +435,7 @@ async function processCampaignActivities(
   }
   
   // Get stored campaign
-  const storedCampaign = await prisma.campaign.findFirst({
+  const storedCampaign = await supabaseCampaigns.findFirst({
     where: {
       clientId,
       emeliaId: campaignId
@@ -569,7 +569,7 @@ async function processActivity(
 
 async function processReplyActivity(clientId: string, campaignId: string, activity: EmeliaActivity) {
   // Find or create thread
-  let thread = await prisma.thread.findFirst({
+  let thread = await supabaseThreads.findFirst({
     where: {
       clientId,
       campaignId,
@@ -630,7 +630,7 @@ Date: ${dateFormatted}
   const subject = `Réponse à la campagne` // We don't have subject in reply activities
   
   if (!thread) {
-    thread = await prisma.thread.create({
+    thread = await supabaseThreads.create({
       data: {
         clientId,
         campaignId,
@@ -642,7 +642,7 @@ Date: ${dateFormatted}
     })
   } else {
     // Update thread lastAt
-    await prisma.thread.update({
+    await supabaseThreads.update({
       where: { id: thread.id },
       data: {
         lastAt: new Date(activity.date),
@@ -653,7 +653,7 @@ Date: ${dateFormatted}
   // (contactName already defined above in messageContent creation)
   
   // Check if we already processed this specific reply
-  const existingMessage = await prisma.message.findFirst({
+  const existingMessage = await supabaseMessages.findFirst({
     where: {
       threadId: thread.id,
       messageId: activity._id,
@@ -663,7 +663,7 @@ Date: ${dateFormatted}
   
   if (!existingMessage) {
     // Create message with Emelia's activity ID as messageId
-    await prisma.message.create({
+    await supabaseMessages.create({
       data: {
         threadId: thread.id,
         direction: 'INBOUND', // Reply is always inbound
@@ -739,7 +739,7 @@ Date: ${dateFormatted}
       }
     }
     
-    await prisma.thread.update({
+    await supabaseThreads.update({
       where: { id: thread.id },
       data: {
         label,

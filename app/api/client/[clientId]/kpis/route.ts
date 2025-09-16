@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { prisma } from '@/lib/db'
+import { supabaseClients } from '@/lib/supabase-adapter'
 
 interface RouteContext {
   params: Promise<{ clientId: string }>
@@ -10,11 +10,9 @@ export async function GET(request: NextRequest, context: RouteContext) {
     const { clientId } = await context.params
 
     // Get client to verify it exists
-    const client = await prisma.client.findUnique({
+    const client = await supabaseClients.findUnique({
       where: { id: clientId },
-      include: {
-        kpis: true
-      }
+      include: { kpis: true }
     })
 
     if (!client) {

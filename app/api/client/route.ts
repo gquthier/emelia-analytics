@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { prisma } from '@/lib/db'
+import { supabaseClients, supabaseShareLinks } from '@/lib/supabase-adapter'
 import { encryptApiKey, decryptApiKey } from '@/lib/crypto'
 import { EmeliaAPIClient } from '@/lib/emelia'
 import { createShareLink } from '@/lib/auth'
@@ -8,19 +8,14 @@ import { setupClientWebhooks } from '@/lib/webhook-manager'
 // GET - Récupérer tous les clients
 export async function GET() {
   try {
-    const clients = await prisma.client.findMany({
-      include: {
-        campaigns: true,
-        webhooks: true,
-        kpis: true
-      },
+    const clients = await supabaseClients.findMany({
       orderBy: {
         createdAt: 'desc'
       }
     })
 
     // Décrypter les clés API pour l'affichage
-    const clientsWithDecryptedKeys = clients.map(client => ({
+    const clientsWithDecryptedKeys = clients.map((client: any) => ({
       ...client,
       apiKey: decryptApiKey(client.apiKeyEnc)
     }))
@@ -61,7 +56,7 @@ export async function POST(request: NextRequest) {
     }
 
     // Check if code3 is already used
-    const existingClient = await prisma.client.findFirst({
+    const existingClient = await supabaseClients.findFirst({
       where: { code3: code3.toUpperCase() }
     })
 
@@ -81,7 +76,7 @@ export async function POST(request: NextRequest) {
     const encryptedApiKey = encryptApiKey(apiKey)
 
     // Create client with new fields
-    const client = await prisma.client.create({
+    const client = await supabaseClients.create({
       data: {
         name,
         code3: code3.toUpperCase(),
@@ -98,7 +93,7 @@ export async function POST(request: NextRequest) {
     // Create initial share link
     const shareLink = createShareLink(client.id)
 
-    await prisma.shareLink.create({
+    await supabaseShareLinks.create({
       data: {
         clientId: client.id,
         token: shareLink.split('token=')[1],

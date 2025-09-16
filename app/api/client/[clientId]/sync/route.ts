@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { prisma } from '@/lib/db'
+import { supabaseClients } from '@/lib/supabase-adapter'
 import { decryptApiKey } from '@/lib/crypto'
 import { EmeliaAPIClient } from '@/lib/emelia'
 import { backfillClient } from '@/lib/sync'
@@ -13,7 +13,7 @@ export async function POST(request: NextRequest, context: RouteContext) {
     const { clientId } = await context.params
 
     // Get client
-    const client = await prisma.client.findUnique({
+    const client = await supabaseClients.findUnique({
       where: { id: clientId }
     })
 

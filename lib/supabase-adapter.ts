@@ -81,6 +81,26 @@ export const supabaseClients = {
     }
     
     return client;
+  },
+
+  async create(options: { data: { [key: string]: unknown } }) {
+    // Générer un ID unique si pas fourni
+    if (!options.data.id) {
+      options.data.id = `cm${Math.random().toString(36).substring(2, 15)}${Math.random().toString(36).substring(2, 15)}`;
+    }
+    
+    const result = await supabaseRequest('POST', '/Client', options.data);
+    return result?.[0] || result;
+  },
+
+  async update(options: { where: { id: string }, data: { [key: string]: unknown } }) {
+    const result = await supabaseRequest('PATCH', `/Client?id=eq.${options.where.id}`, options.data);
+    return result?.[0] || result;
+  },
+
+  async delete(options: { where: { id: string } }) {
+    await supabaseRequest('DELETE', `/Client?id=eq.${options.where.id}`);
+    return { id: options.where.id };
   }
 };
 
@@ -88,6 +108,202 @@ export const supabaseClients = {
 export const supabaseCampaigns = {
   async findMany(options: { where?: { [key: string]: unknown } } = {}) {
     let path = '/Campaign?select=*';
+
+    if (options.where) {
+      const whereClause = Object.entries(options.where)
+        .map(([key, value]) => `${key}=eq.${value}`)
+        .join('&');
+      path += `&${whereClause}`;
+    }
+
+    return await supabaseRequest('GET', path);
+  },
+
+  async findFirst(options: { where?: { [key: string]: unknown } } = {}) {
+    let path = '/Campaign?select=*&limit=1';
+
+    if (options.where) {
+      const whereClause = Object.entries(options.where)
+        .map(([key, value]) => `${key}=eq.${value}`)
+        .join('&');
+      path += `&${whereClause}`;
+    }
+
+    const result = await supabaseRequest('GET', path);
+    return result?.[0] || null;
+  },
+
+  async findUnique(options: { where: { [key: string]: unknown } }) {
+    let path = '/Campaign?select=*&limit=1';
+
+    const whereClause = Object.entries(options.where)
+      .map(([key, value]) => `${key}=eq.${value}`)
+      .join('&');
+    path += `&${whereClause}`;
+
+    const result = await supabaseRequest('GET', path);
+    return result?.[0] || null;
+  },
+
+  async create(options: { data: { [key: string]: unknown } }) {
+    // Générer un ID unique si pas fourni
+    if (!options.data.id) {
+      options.data.id = `cm${Math.random().toString(36).substring(2, 15)}${Math.random().toString(36).substring(2, 15)}`;
+    }
+    
+    const result = await supabaseRequest('POST', '/Campaign', options.data);
+    return result?.[0] || result;
+  },
+
+  async update(options: { where: { [key: string]: unknown }, data: { [key: string]: unknown } }) {
+    const whereClause = Object.entries(options.where)
+      .map(([key, value]) => `${key}=eq.${value}`)
+      .join('&');
+    
+    const result = await supabaseRequest('PATCH', `/Campaign?${whereClause}`, options.data);
+    return result?.[0] || result;
+  },
+
+  async upsert(options: { where: { [key: string]: unknown }, create: { [key: string]: unknown }, update: { [key: string]: unknown } }) {
+    // Try to find existing record
+    const existing = await this.findUnique(options);
+    
+    if (existing) {
+      return this.update({ where: options.where, data: options.update });
+    } else {
+      return this.create({ data: { ...options.where, ...options.create } });
+    }
+  }
+};
+
+// Adaptateur pour les ShareLink
+export const supabaseShareLinks = {
+  async create(options: { data: { [key: string]: unknown } }) {
+    // Générer un ID unique si pas fourni
+    if (!options.data.id) {
+      options.data.id = `cm${Math.random().toString(36).substring(2, 15)}${Math.random().toString(36).substring(2, 15)}`;
+    }
+    
+    const result = await supabaseRequest('POST', '/ShareLink', options.data);
+    return result?.[0] || result;
+  },
+
+  async findFirst(options: { where: { [key: string]: unknown } }) {
+    let path = '/ShareLink?select=*&limit=1';
+    
+    const whereClause = Object.entries(options.where)
+      .map(([key, value]) => `${key}=eq.${value}`)
+      .join('&');
+    path += `&${whereClause}`;
+    
+    const result = await supabaseRequest('GET', path);
+    return result?.[0] || null;
+  }
+};
+
+// Adaptateur pour les Thread
+export const supabaseThreads = {
+  async update(options: { where: { id: string }, data: { [key: string]: unknown } }) {
+    const result = await supabaseRequest('PATCH', `/Thread?id=eq.${options.where.id}`, options.data);
+    return result?.[0] || result;
+  },
+
+  async findUnique(options: { where: { id: string } }) {
+    const path = `/Thread?select=*&id=eq.${options.where.id}&limit=1`;
+    const result = await supabaseRequest('GET', path);
+    return result?.[0] || null;
+  },
+
+  async findFirst(options: { where: { [key: string]: unknown } }) {
+    let path = '/Thread?select=*&limit=1';
+    
+    const whereClause = Object.entries(options.where)
+      .map(([key, value]) => `${key}=eq.${value}`)
+      .join('&');
+    path += `&${whereClause}`;
+    
+    const result = await supabaseRequest('GET', path);
+    return result?.[0] || null;
+  },
+
+  async create(options: { data: { [key: string]: unknown } }) {
+    // Générer un ID unique si pas fourni
+    if (!options.data.id) {
+      options.data.id = `cm${Math.random().toString(36).substring(2, 15)}${Math.random().toString(36).substring(2, 15)}`;
+    }
+    
+    const result = await supabaseRequest('POST', '/Thread', options.data);
+    return result?.[0] || result;
+  },
+
+  async count(options: { where: { [key: string]: unknown } }) {
+    let path = '/Thread?select=count';
+
+    if (options.where) {
+      const whereClause = Object.entries(options.where)
+        .map(([key, value]) => `${key}=eq.${value}`)
+        .join('&');
+      path += `&${whereClause}`;
+    }
+
+    try {
+      // Use HEAD request to get count from Content-Range header
+      const url = `${SUPABASE_URL}/rest/v1${path}`;
+      const response = await fetch(url, {
+        method: 'HEAD',
+        headers: {
+          'apikey': SUPABASE_KEY,
+          'Authorization': `Bearer ${SUPABASE_KEY}`,
+          'Content-Type': 'application/json',
+          'Prefer': 'count=exact'
+        }
+      });
+
+      if (!response.ok) {
+        console.warn(`Supabase count warning (${response.status})`);
+        return 0;
+      }
+
+      const contentRange = response.headers.get('Content-Range');
+      if (contentRange) {
+        const match = contentRange.match(/\/(\d+)$/);
+        return match ? parseInt(match[1]) : 0;
+      }
+
+      return 0;
+    } catch (error) {
+      console.error('Error in count method:', error);
+      return 0;
+    }
+  }
+};
+
+// Adaptateur pour les Messages
+export const supabaseMessages = {
+  async findFirst(options: { where: { [key: string]: unknown } }) {
+    let path = '/Message?select=*&limit=1';
+    
+    const whereClause = Object.entries(options.where)
+      .map(([key, value]) => `${key}=eq.${value}`)
+      .join('&');
+    path += `&${whereClause}`;
+    
+    const result = await supabaseRequest('GET', path);
+    return result?.[0] || null;
+  },
+
+  async create(options: { data: { [key: string]: unknown } }) {
+    // Générer un ID unique si pas fourni
+    if (!options.data.id) {
+      options.data.id = `cm${Math.random().toString(36).substring(2, 15)}${Math.random().toString(36).substring(2, 15)}`;
+    }
+    
+    const result = await supabaseRequest('POST', '/Message', options.data);
+    return result?.[0] || result;
+  },
+
+  async count(options: { where: { [key: string]: unknown } }) {
+    let path = '/Message?select=count';
     
     if (options.where) {
       const whereClause = Object.entries(options.where)
@@ -96,7 +312,37 @@ export const supabaseCampaigns = {
       path += `&${whereClause}`;
     }
     
-    return await supabaseRequest('GET', path);
+    const result = await supabaseRequest('HEAD', path);
+    return parseInt(result.headers?.get('Content-Range')?.split('/')[1] || '0');
+  }
+};
+
+// Adaptateur pour les ClientKpis
+export const supabaseClientKpis = {
+  async upsert(options: { where: { [key: string]: unknown }, create: { [key: string]: unknown }, update: { [key: string]: unknown } }) {
+    // Try to find existing record
+    let path = '/ClientKpis?select=*&limit=1';
+    
+    const whereClause = Object.entries(options.where)
+      .map(([key, value]) => `${key}=eq.${value}`)
+      .join('&');
+    path += `&${whereClause}`;
+    
+    const existing = await supabaseRequest('GET', path);
+    
+    if (existing?.[0]) {
+      // Update existing
+      const result = await supabaseRequest('PATCH', `/ClientKpis?${whereClause}`, options.update);
+      return result?.[0] || result;
+    } else {
+      // Create new
+      const createData = { ...options.where, ...options.create };
+      if (!createData.id) {
+        createData.id = `cm${Math.random().toString(36).substring(2, 15)}${Math.random().toString(36).substring(2, 15)}`;
+      }
+      const result = await supabaseRequest('POST', '/ClientKpis', createData);
+      return result?.[0] || result;
+    }
   }
 };
 

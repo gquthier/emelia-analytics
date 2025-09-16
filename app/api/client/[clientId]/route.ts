@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { prisma } from '@/lib/db'
+import { supabaseClients } from '@/lib/supabase-adapter'
 import { encryptApiKey, decryptApiKey } from '@/lib/crypto'
 import { EmeliaAPIClient } from '@/lib/emelia'
 
@@ -10,11 +10,9 @@ export async function GET(
 ) {
   try {
     const { clientId } = await params
-    const client = await prisma.client.findUnique({
+    const client = await supabaseClients.findUnique({
       where: { id: clientId },
       include: {
-        campaigns: true,
-        webhooks: true,
         kpis: true
       }
     })
@@ -56,7 +54,7 @@ export async function PUT(
     } = await request.json()
 
     // Vérifier que le client existe
-    const existingClient = await prisma.client.findUnique({
+    const existingClient = await supabaseClients.findUnique({
       where: { id: clientId }
     })
 
@@ -75,12 +73,9 @@ export async function PUT(
 
     // Vérifier si le code3 est déjà utilisé par un autre client
     if (code3.toUpperCase() !== existingClient.code3) {
-      const code3Exists = await prisma.client.findFirst({
-        where: { 
-          code3: code3.toUpperCase(),
-          id: { not: clientId }
-        }
-      })
+      // Check if code3 is already used by another client via findMany
+      const allClients = await supabaseClients.findMany()
+      const code3Exists = allClients.find(c => c.code3 === code3.toUpperCase() && c.id !== clientId)
 
       if (code3Exists) {
         return NextResponse.json('Cet identifiant 3 lettres est déjà utilisé', { status: 400 })
@@ -101,7 +96,7 @@ export async function PUT(
     }
 
     // Mettre à jour le client
-    const updatedClient = await prisma.client.update({
+    const updatedClient = await supabaseClients.update({
       where: { id: clientId },
       data: {
         name,
@@ -133,7 +128,7 @@ export async function DELETE(
 ) {
   try {
     // Vérifier que le client existe
-    const existingClient = await prisma.client.findUnique({
+    const existingClient = await supabaseClients.findUnique({
       where: { id: params.clientId }
     })
 
@@ -142,7 +137,7 @@ export async function DELETE(
     }
 
     // Supprimer le client (cascade supprimera les relations)
-    await prisma.client.delete({
+    await supabaseClients.delete({
       where: { id: params.clientId }
     })
 

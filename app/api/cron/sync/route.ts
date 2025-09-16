@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { prisma } from '@/lib/db'
+import { supabaseClients } from '@/lib/supabase-adapter'
 import { decryptApiKey } from '@/lib/crypto'
 import { resyncClient } from '@/lib/sync'
 
@@ -17,21 +17,18 @@ export async function POST(request: NextRequest) {
     const fortyEightHoursAgo = new Date()
     fortyEightHoursAgo.setHours(fortyEightHoursAgo.getHours() - 48)
 
-    const clients = await prisma.client.findMany({
-      where: {
-        OR: [
-          { lastSyncAt: null },
-          { lastSyncAt: { lt: fortyEightHoursAgo } }
-        ]
-      },
-      select: {
-        id: true,
-        name: true,
-        code3: true,
-        apiKeyEnc: true,
-        lastSyncAt: true
-      }
-    })
+    const allClients = await supabaseClients.findMany()
+    const clients = allClients.filter(client => {
+      if (!client.lastSyncAt) return true
+      const lastSync = new Date(client.lastSyncAt)
+      return lastSync < fortyEightHoursAgo
+    }).map(client => ({
+      id: client.id,
+      name: client.name,
+      code3: client.code3,
+      apiKeyEnc: client.apiKeyEnc,
+      lastSyncAt: client.lastSyncAt
+    }))
 
     if (clients.length === 0) {
       console.log('✅ No clients need syncing')
@@ -101,16 +98,14 @@ export async function GET() {
     const fortyEightHoursAgo = new Date()
     fortyEightHoursAgo.setHours(fortyEightHoursAgo.getHours() - 48)
 
-    const clientsNeedingSync = await prisma.client.count({
-      where: {
-        OR: [
-          { lastSyncAt: null },
-          { lastSyncAt: { lt: fortyEightHoursAgo } }
-        ]
-      }
-    })
+    const allClients = await supabaseClients.findMany()
+    const clientsNeedingSync = allClients.filter(client => {
+      if (!client.lastSyncAt) return true
+      const lastSync = new Date(client.lastSyncAt)
+      return lastSync < fortyEightHoursAgo
+    }).length
 
-    const totalClients = await prisma.client.count()
+    const totalClients = allClients.length
     const recentlySynced = totalClients - clientsNeedingSync
 
     return NextResponse.json({

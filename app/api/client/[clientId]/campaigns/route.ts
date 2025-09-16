@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { prisma } from '@/lib/db'
+import { supabaseClients, supabaseCampaigns } from '@/lib/supabase-adapter'
 import { EmeliaAPIClient } from '@/lib/emelia'
 import { decryptApiKey } from '@/lib/crypto'
 
@@ -12,7 +12,7 @@ export async function GET(request: NextRequest, context: RouteContext) {
     const { clientId } = await context.params
 
     // Get client to verify it exists
-    const client = await prisma.client.findUnique({
+    const client = await supabaseClients.findUnique({
       where: { id: clientId }
     })
 
@@ -24,51 +24,13 @@ export async function GET(request: NextRequest, context: RouteContext) {
     const apiKey = decryptApiKey(client.apiKeyEnc)
     const emeliClient = new EmeliaAPIClient(apiKey)
 
-    // Get campaigns with detailed stats
-    const campaigns = await prisma.campaign.findMany({
-      where: { clientId },
-      include: {
-        _count: {
-          select: { 
-            threads: true 
-          }
-        },
-        threads: {
-          include: {
-            _count: {
-              select: { messages: true }
-            },
-            messages: {
-              select: {
-                direction: true,
-                at: true
-              }
-            }
-          },
-          take: 5 // Limit for performance, get more detailed stats later if needed
-        }
-      },
-      orderBy: { createdAt: 'desc' }
+    // Get campaigns for this client
+    const campaigns = await supabaseCampaigns.findMany({
+      where: { clientId }
     })
 
-    // Calculate stats for each campaign (including real Emelia stats)
-    const campaignsWithStats = await Promise.all(campaigns.map(async (campaign) => {
-      const threads = campaign.threads
-      const totalMessages = threads.reduce((sum, thread) => sum + thread._count.messages, 0)
-      const inboundMessages = threads.reduce((sum, thread) => 
-        sum + thread.messages.filter(msg => msg.direction === 'INBOUND').length, 0)
-      const outboundMessages = threads.reduce((sum, thread) => 
-        sum + thread.messages.filter(msg => msg.direction === 'OUTBOUND').length, 0)
-
-      // Get latest activity
-      const latestActivity = threads.reduce((latest: Date | null, thread) => {
-        const threadLatest = thread.messages.reduce((threadLatest: Date | null, msg) => {
-          const msgDate = new Date(msg.at)
-          return !threadLatest || msgDate > threadLatest ? msgDate : threadLatest
-        }, null)
-        return !latest || (threadLatest && threadLatest > latest) ? threadLatest : latest
-      }, null)
-
+    // Calculate stats for each campaign (simplified for Supabase)
+    const campaignsWithStats = await Promise.all(campaigns.map(async (campaign: any) => {
       // Get real Emelia stats
       let emeliStats = null
       try {
@@ -95,16 +57,9 @@ export async function GET(request: NextRequest, context: RouteContext) {
         createdAt: campaign.createdAt,
         lastEventAt: campaign.lastEventAt,
         stats: {
-          totalThreads: campaign._count.threads,
-          totalMessages,
-          inboundMessages,
-          outboundMessages,
-          latestActivity,
           // Add real Emelia stats
           emelia: emeliStats
-        },
-        // Remove the full threads data for cleaner response
-        threads: undefined
+        }
       }
     }))
 
